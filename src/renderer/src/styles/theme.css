@@ -1,0 +1,144 @@
+:root {
+  --pink: #f472b6;
+  --pink-strong: #ec4899;
+  --blue: #60a5fa;
+  --blue-strong: #3b82f6;
+  --purple: #a78bfa;
+  --purple-strong: #8b5cf6;
+
+  --grad-primary: linear-gradient(135deg, var(--pink-strong), var(--purple-strong), var(--blue-strong));
+  --grad-soft: linear-gradient(135deg, rgba(244, 114, 182, 0.18), rgba(167, 139, 250, 0.18), rgba(96, 165, 250, 0.18));
+  --grad-text: linear-gradient(90deg, var(--pink), var(--purple), var(--blue));
+
+  --bg-app: #0f0a1e;
+  --bg-app-2: #150f28;
+  --panel: rgba(255, 255, 255, 0.045);
+  --panel-strong: rgba(255, 255, 255, 0.07);
+  --panel-border: rgba(255, 255, 255, 0.1);
+  --text-primary: #f2eefc;
+  --text-muted: #a79fc4;
+  --paper: #fbf9ff;
+  --paper-text: #241b3b;
+
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --radius-sm: 10px;
+
+  --shadow-soft: 0 8px 30px rgba(20, 8, 45, 0.35);
+  --shadow-glow: 0 0 0 1px rgba(255, 255, 255, 0.06), 0 12px 40px rgba(139, 92, 246, 0.25);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* KaTeX's own layout (fraction bars, vlist row offsets, the sqrt sign, ...)
+   is built assuming the browser default content-box sizing — forcing
+   border-box onto it via the reset above throws off its precise vertical
+   offsets, worst for nested constructs (e.g. a fraction inside a root)
+   where the discrepancy compounds across levels. */
+.katex,
+.katex * {
+  box-sizing: content-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'Segoe UI',
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    Roboto,
+    Helvetica,
+    Arial,
+    sans-serif;
+  color: var(--text-primary);
+  background:
+    radial-gradient(1200px 800px at 8% -10%, rgba(236, 72, 153, 0.18), transparent 60%),
+    radial-gradient(1000px 700px at 100% 0%, rgba(96, 165, 250, 0.16), transparent 55%),
+    radial-gradient(900px 900px at 50% 120%, rgba(139, 92, 246, 0.18), transparent 60%),
+    var(--bg-app);
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(167, 139, 250, 0.35);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+button {
+  font-family: inherit;
+}
+
+.gradient-text {
+  background: var(--grad-text);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-strong);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  padding: 8px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    box-shadow 0.12s ease,
+    background 0.12s ease;
+}
+.btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+  transform: translateY(-1px);
+}
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn-primary {
+  border: none;
+  background: var(--grad-primary);
+  color: white;
+  box-shadow: var(--shadow-glow);
+}
+.btn-primary:hover {
+  filter: brightness(1.08);
+}
+
+.btn-ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-muted);
+}
+.btn-ghost:hover {
+  background: var(--panel);
+  color: var(--text-primary);
+}

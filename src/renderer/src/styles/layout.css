@@ -1,0 +1,1029 @@
+.app-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- Home screen --- */
+
+.home-shell {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 40px;
+  padding: 64px 24px;
+  overflow-y: auto;
+  -webkit-app-region: drag;
+}
+
+.home-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  text-align: center;
+}
+
+.home-logo {
+  width: 56px;
+  height: 56px;
+  font-size: 26px;
+  border-radius: var(--radius-md);
+}
+
+.home-title {
+  font-size: 34px;
+  font-weight: 800;
+  margin: 0;
+  letter-spacing: 0.01em;
+}
+
+.home-subtitle {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 14px;
+  max-width: 420px;
+}
+
+.home-project-grid {
+  -webkit-app-region: no-drag;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 16px;
+  max-width: 760px;
+}
+
+.home-new-project,
+.home-project-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 200px;
+  padding: 26px 18px;
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+}
+
+.home-new-project {
+  border: 1.5px dashed var(--panel-border);
+  background: var(--panel);
+}
+.home-new-project:hover {
+  border-color: rgba(167, 139, 250, 0.6);
+  background: var(--panel-strong);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.home-new-project-plus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: var(--grad-primary);
+  color: white;
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 1;
+  box-shadow: var(--shadow-glow);
+}
+
+.home-new-project-label,
+.home-project-card-title {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* A saved project's card — solid (not dashed) since it holds real content,
+   with a small delete tab that only shows on hover so the grid doesn't look
+   cluttered with trash icons at rest. */
+.home-project-card {
+  position: relative;
+  align-items: flex-start;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-strong);
+  text-align: left;
+}
+.home-project-card:hover {
+  border-color: rgba(167, 139, 250, 0.6);
+  box-shadow: var(--shadow-glow);
+  transform: translateY(-2px);
+}
+
+.home-project-card-title {
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-project-card-date {
+  font-size: 11.5px;
+  color: var(--text-muted);
+}
+
+.home-project-delete {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.14);
+  color: #dc2626;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+}
+.home-project-card:hover .home-project-delete {
+  opacity: 1;
+}
+.home-project-delete:hover {
+  background: rgba(239, 68, 68, 0.32);
+  color: #b91c1c;
+}
+
+/* --- Modal dialogs (e.g. MatrixDimensionsDialog) --- */
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 10, 30, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 20;
+}
+
+.modal-card {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 280px;
+  padding: 22px;
+  border-radius: var(--radius-lg);
+  background: var(--bg-app-2);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow-soft);
+}
+
+.modal-title {
+  font-size: 16px;
+  font-weight: 800;
+}
+
+.modal-field-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.modal-field {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.modal-field-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.modal-field-input {
+  width: 100%;
+  background: var(--panel-strong);
+  border: 1px solid var(--panel-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  color: var(--text-primary);
+  font-size: 14px;
+  outline: none;
+}
+.modal-field-input:focus {
+  border-color: var(--purple);
+}
+
+.modal-field-sep {
+  padding-bottom: 9px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--panel-border);
+  background: var(--panel);
+  backdrop-filter: blur(16px);
+  -webkit-app-region: drag;
+}
+
+.app-header-actions,
+.app-brand,
+.view-toggle {
+  -webkit-app-region: no-drag;
+}
+
+.view-toggle {
+  display: flex;
+  gap: 2px;
+  background: var(--panel-strong);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 3px;
+}
+
+.view-toggle-btn {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12.5px;
+  font-weight: 700;
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.view-toggle-btn:hover {
+  color: var(--text-primary);
+}
+.view-toggle-btn[data-active] {
+  background: var(--grad-primary);
+  color: white;
+}
+
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.app-brand-link {
+  border: none;
+  background: transparent;
+  padding: 4px 6px;
+  margin: -4px -6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background 0.12s ease, transform 0.12s ease;
+}
+.app-brand-link:hover {
+  background: var(--panel);
+  transform: translateY(-1px);
+}
+
+.app-logo {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--grad-primary);
+  color: white;
+  font-weight: 700;
+  font-style: italic;
+  box-shadow: var(--shadow-glow);
+}
+
+.app-brand-text {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.app-header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.app-body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.page-viewport {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 36px 24px 64px;
+  gap: 16px;
+}
+
+.paper {
+  width: 100%;
+  max-width: 780px;
+  min-width: 0;
+  min-height: 1000px;
+  background: var(--paper);
+  color: var(--paper-text);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-soft);
+  padding: 56px 64px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  /* Same overflow-x-without-overflow-y gotcha as .block-math-canvas: left
+     unpaired, it silently upgrades overflow-y to auto too, which makes this
+     flex item's min-height default to 0 instead of "at least as tall as its
+     content" — so instead of always growing with the blocks inside it, the
+     paper could get capped by the surrounding flex layout. Spelling out
+     overflow-y: visible opts back out, so it always grows to fit and
+     .page-viewport stays the only thing that scrolls. */
+  overflow-x: hidden;
+  overflow-y: visible;
+}
+
+.paper-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  font-size: 16px;
+  line-height: 1.7;
+  min-width: 0;
+}
+
+.page-add-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  max-width: 780px;
+}
+
+/* --- Rendered (real pdflatex compile) view --- */
+
+.rendered-viewport {
+  /* Fills the available app-body space and lets the PDF frame grow to fill
+     it in turn, rather than pinning to a fixed page width — so the viewer
+     actually scales up with the window instead of floating small and
+     centered in a lot of empty space on a large screen. */
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px 20px 20px;
+  background: var(--bg-app-2);
+  gap: 12px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.rendered-toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.rendered-toolbar-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.compiled-pdf-frame {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  border: none;
+  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.14);
+}
+
+.rendered-paper {
+  /* No gradient theming — a plain page, not a themed widget card. Used for
+     the compiling/error placeholders, filling the same area the real PDF
+     frame would. */
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: #ffffff;
+  color: #1a1a1a;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 8px 24px rgba(0, 0, 0, 0.14);
+  padding: 48px;
+  overflow-y: auto;
+}
+
+/* Overrides .rendered-paper's white/dark-text default — while compiling,
+   there's no page content yet, so it reads better as part of the app's own
+   dark background rather than a blank white sheet flashing in before the
+   real (white) PDF page replaces it. */
+.rendered-paper.rendered-placeholder {
+  background: transparent;
+  color: var(--text-primary);
+  box-shadow: none;
+}
+.rendered-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+}
+
+.rendered-error {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 40px;
+}
+
+.rendered-error-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #b91c1c;
+}
+
+.rendered-error-log {
+  margin: 0;
+  padding: 14px;
+  background: rgba(185, 28, 28, 0.06);
+  border: 1px solid rgba(185, 28, 28, 0.2);
+  border-radius: 8px;
+  font-family: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: #7f1d1d;
+  white-space: pre-wrap;
+  overflow-x: auto;
+}
+
+/* --- Blocks --- */
+
+.block {
+  position: relative;
+  border-radius: var(--radius-md);
+  transition: background 0.15s ease;
+}
+.block:hover {
+  background: rgba(139, 92, 246, 0.05);
+}
+
+/* Floating toolbar shared by text and math blocks. It's an absolute overlay
+   (not part of normal flow) so it never pushes block content down — a block
+   with no visible toolbar row keeps symmetric top/bottom spacing regardless
+   of hover state. */
+.block-toolbar {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  z-index: 3;
+}
+.block:hover .block-toolbar,
+.block-toolbar:focus-within {
+  opacity: 1;
+}
+
+/* Drag-to-reorder handle, floating on the opposite corner from the toolbar.
+   The wrapper gets a dedicated left gutter (via padding, offset by an equal
+   negative margin so the block itself doesn't visually shift right) so the
+   handle has clear room to sit outside the block's own rounded corner
+   instead of overlapping its curve. */
+.block-drag-wrapper {
+  position: relative;
+  padding-left: 26px;
+  margin-left: -26px;
+  min-width: 0;
+}
+
+/* The real block stays mounted (so the wrapper keeps its natural height) but
+   is hidden while dragging; the placeholder below covers the same area with
+   a flat darker fill marking where the block used to be. The moving visual
+   itself is the DragOverlay's BlockPreview, not this element. */
+.block-drag-content[data-hidden] {
+  visibility: hidden;
+}
+.block-drag-placeholder {
+  position: absolute;
+  top: 0;
+  left: 26px;
+  right: 0;
+  height: 48px;
+  border-radius: var(--radius-md);
+  background: rgba(36, 27, 59, 0.16);
+  border: 1.5px dashed rgba(36, 27, 59, 0.28);
+}
+
+.block-drag-wrapper[data-over]::before {
+  content: '';
+  position: absolute;
+  left: 26px;
+  right: 0;
+  top: -4px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--grad-primary);
+  z-index: 2;
+}
+
+.block-drag-handle {
+  position: absolute;
+  top: 50%;
+  left: 2px;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background-color: transparent;
+  background-image: radial-gradient(circle, rgba(109, 40, 217, 0.55) 1.3px, transparent 1.3px);
+  background-size: 6px 7px;
+  background-position: center;
+  cursor: grab;
+  opacity: 0;
+  transition: opacity 0.12s ease, background-color 0.12s ease;
+  z-index: 3;
+}
+.block-drag-handle:hover {
+  background-color: rgba(139, 92, 246, 0.12);
+}
+.block-drag-handle:active {
+  cursor: grabbing;
+}
+.block-drag-wrapper:hover .block-drag-handle {
+  opacity: 1;
+}
+
+/* Consolidated per-block "..." menu: align, display/inline, duplicate, delete. */
+.block-menu {
+  position: relative;
+}
+.block-menu-trigger {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(36, 27, 59, 0.1);
+  color: var(--paper-text);
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.block-menu-trigger:hover {
+  background: rgba(139, 92, 246, 0.18);
+}
+
+.block-menu-panel {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  background: var(--paper);
+  color: var(--paper-text);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-soft);
+  border: 1px solid rgba(139, 92, 246, 0.16);
+  z-index: 10;
+}
+
+.block-menu-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px 6px;
+  border-bottom: 1px solid rgba(139, 92, 246, 0.12);
+  margin-bottom: 2px;
+}
+
+.block-menu-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(36, 27, 59, 0.5);
+}
+
+.block-menu-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  border: none;
+  background: transparent;
+  color: var(--paper-text);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.block-menu-item:hover {
+  background: rgba(139, 92, 246, 0.1);
+}
+.block-menu-item-danger {
+  color: #be185d;
+}
+.block-menu-item-danger:hover {
+  background: rgba(236, 72, 153, 0.12);
+}
+
+.align-controls {
+  display: flex;
+  gap: 2px;
+  background: rgba(255, 255, 255, 0.65);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  border-radius: 999px;
+  padding: 2px;
+}
+.align-btn {
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #6d28d9;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.align-btn:hover {
+  background: rgba(139, 92, 246, 0.14);
+}
+.align-btn[data-active] {
+  background: var(--grad-primary);
+  color: white;
+}
+
+.block-textarea {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  /* overflow-wrap alone wasn't forcing a break on a single unbroken run of
+     characters inside a <textarea>; break-all guarantees a break between any
+     two characters whenever the line needs one, textarea quirks aside. */
+  word-break: break-all;
+  background: transparent;
+  color: var(--paper-text);
+  font-family: inherit;
+  font-size: 16px;
+  line-height: 1.7;
+  padding: 6px 16px;
+}
+.block-textarea::placeholder {
+  color: rgba(36, 27, 59, 0.32);
+}
+.block-textarea.align-left {
+  text-align: left;
+}
+.block-textarea.align-center {
+  text-align: center;
+}
+.block-textarea.align-right {
+  text-align: right;
+}
+
+/* Heading blocks (\section/\subsection/\subsubsection) — a small tag names
+   the level (since the input itself, styled to look like the real heading,
+   doesn't otherwise say which one it is), and font size steps down at each
+   level to mirror LaTeX's own heading hierarchy. */
+.block-heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 16px 10px;
+}
+
+.heading-level-tag {
+  align-self: flex-start;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--purple-strong);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.heading-input {
+  width: 100%;
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--paper-text);
+  font-family: inherit;
+  font-weight: 700;
+}
+.heading-input::placeholder {
+  color: rgba(36, 27, 59, 0.32);
+  font-weight: 600;
+}
+.heading-input.align-left {
+  text-align: left;
+}
+.heading-input.align-center {
+  text-align: center;
+}
+.heading-input.align-right {
+  text-align: right;
+}
+
+.block-heading-section .heading-input {
+  font-size: 23px;
+}
+.block-heading-subsection .heading-input {
+  font-size: 19px;
+}
+.block-heading-subsubsection .heading-input {
+  font-size: 16px;
+}
+
+.block-rawmath {
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 18px;
+  background: linear-gradient(135deg, rgba(96, 165, 250, 0.05), rgba(244, 114, 182, 0.05));
+}
+
+.rawmath-input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border: none;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  background: rgba(139, 92, 246, 0.06);
+  border-radius: 8px;
+  color: var(--paper-text);
+  font-family: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+  font-size: 15px;
+  line-height: 1.6;
+  padding: 8px 10px;
+}
+.rawmath-input::placeholder {
+  color: rgba(36, 27, 59, 0.32);
+}
+.rawmath-input.align-left {
+  text-align: left;
+}
+.rawmath-input.align-center {
+  text-align: center;
+}
+.rawmath-input.align-right {
+  text-align: right;
+}
+
+.block-math {
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 14px 18px 10px;
+  background: linear-gradient(135deg, rgba(244, 114, 182, 0.05), rgba(96, 165, 250, 0.05));
+}
+
+.chip-toggle {
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.08);
+  color: #6d28d9;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 10px;
+  cursor: pointer;
+}
+
+.block-math-canvas {
+  display: flex;
+  /* Top padding is taller than the other sides: a full-width Text/Math
+     widget's own delete button (offset -0.65em above its box, see
+     .node-delete) now reaches the canvas's top edge since those widgets
+     span the whole row — without extra clearance here it collides with
+     the block's Minimize/menu toolbar floating at top:8px. */
+  padding: 34px 4px 14px;
+  /* overflow-x alone, with overflow-y left unset, silently upgrades
+     overflow-y to auto too (a CSS Overflow spec special case) — which in
+     turn makes this flex item's min-height default to 0 instead of "at
+     least as tall as its content." Once the page's flex-column chain ran
+     short on vertical room, this box (not the outer page) was the one that
+     shrank and grew its own scrollbar. Spelling out overflow-y: visible
+     opts back out of that, so it just grows with its content and the outer
+     .page-viewport is the only thing that ever scrolls. */
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.block-math-display .block-math-canvas {
+  font-size: 19px;
+}
+
+.block-math-preview {
+  border-top: 1px solid rgba(139, 92, 246, 0.14);
+  padding: 10px 4px 2px;
+  display: flex;
+  color: var(--paper-text);
+  /* Same overflow-x-without-overflow-y gotcha as .block-math-canvas above —
+     spelled out explicitly so this never gets its own scrollbar either. */
+  overflow-x: hidden;
+  overflow-y: visible;
+  min-width: 0;
+}
+/* KaTeX's own stylesheet sets white-space: nowrap directly on both .katex
+   and the nested .base (math notation conventionally shouldn't wrap) — an
+   explicit rule on the element itself always beats an inherited value from
+   an ancestor, so nothing set upstream (however it cascades) could ever
+   override it. .base also pins width: min-content, which would shrink it to
+   its narrowest possible column instead of filling the available width even
+   once wrapping is allowed. Both need explicit overrides, with enough
+   specificity (two classes vs. KaTeX's one) to win regardless of stylesheet
+   order. */
+.block-math-preview .katex,
+.block-math-preview .base {
+  white-space: normal;
+}
+.block-math-preview .base {
+  width: auto;
+}
+/* The KaTeX-rendered output is a single flex child that otherwise refuses to
+   shrink below its own intrinsic (unwrapped) width — same flexbox min-width
+   default that blocked the widget cells — so its own wrappable content (e.g.
+   prose inside \text{}) never actually got a chance to wrap. */
+.block-math-preview > * {
+  min-width: 0;
+  max-width: 100%;
+}
+/* justify-content on the flex parent (below) is a no-op here: .katex is
+   display:block, so it always fills the full row width regardless of
+   content length — there's no leftover space for justify-content to
+   position it within. KaTeX also bakes in its own text-align: center
+   directly on .katex, which otherwise wins every time regardless of our
+   align choice. The real control point is overriding that text-align. */
+.block-math-preview.align-left {
+  justify-content: flex-start;
+}
+.block-math-preview.align-center {
+  justify-content: center;
+}
+.block-math-preview.align-right {
+  justify-content: flex-end;
+}
+.block-math-preview.align-left .katex {
+  text-align: left;
+}
+.block-math-preview.align-center .katex {
+  text-align: center;
+}
+.block-math-preview.align-right .katex {
+  text-align: right;
+}
+
+.block-math-collapsed {
+  border: none;
+  background: none;
+  padding: 6px;
+}
+
+.block-math-preview-collapsed {
+  border-top: none;
+  padding: 4px;
+}
+
+.page-end-drop {
+  border: 2px dashed rgba(139, 92, 246, 0.2);
+  border-radius: var(--radius-md);
+  padding: 22px;
+  text-align: center;
+  color: rgba(36, 27, 59, 0.4);
+  font-size: 13px;
+  font-weight: 600;
+  transition: border-color 0.12s ease, background 0.12s ease, color 0.12s ease;
+}
+.page-end-drop[data-over] {
+  border-color: var(--purple-strong);
+  background: rgba(139, 92, 246, 0.08);
+  color: #6d28d9;
+}
+
+/* --- Source panel --- */
+
+.source-panel {
+  width: 420px;
+  min-width: 420px;
+  border-left: 1px solid var(--panel-border);
+  background: var(--panel);
+  backdrop-filter: blur(16px);
+  display: flex;
+  flex-direction: column;
+}
+
+.source-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid var(--panel-border);
+}
+
+.source-panel-title {
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.source-panel-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.source-panel-code {
+  flex: 1;
+  overflow: auto;
+  margin: 0;
+  padding: 18px 16px;
+  font-family: 'Cascadia Code', 'Consolas', ui-monospace, monospace;
+  font-size: 12.5px;
+  line-height: 1.7;
+  color: #d9d2f0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media print {
+  .app-header,
+  .sidebar,
+  .source-panel,
+  .page-add-row,
+  .page-end-drop,
+  .block-toolbar,
+  .node-delete,
+  .block-math-canvas,
+  .heading-level-tag {
+    display: none !important;
+  }
+  .block-math-preview {
+    border-top: none !important;
+    padding: 0 !important;
+  }
+  body,
+  .app-shell,
+  .app-body,
+  .page-viewport {
+    background: white !important;
+    height: auto !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+  .paper {
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    max-width: none !important;
+    width: 100% !important;
+    min-height: 0 !important;
+    padding: 24px !important;
+  }
+  .block-math {
+    border: none !important;
+    background: none !important;
+  }
+}

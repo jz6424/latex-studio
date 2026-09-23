@@ -1,0 +1,621 @@
+.math-slot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 30px;
+  padding: 2px 4px;
+  border-radius: 8px;
+  vertical-align: middle;
+  transition: background 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+/* Slots that represent a fillable part of a widget (numerator, radicand, a
+   matrix cell, ...) get a persistent light shading so it's clear where you
+   can click/drop, regardless of whether they already have content. */
+.math-slot-empty {
+  background: rgba(139, 92, 246, 0.075);
+  border: 1.5px dashed transparent;
+}
+
+.math-slot-empty:has(> .text-cell-ghost:only-child) {
+  border-color: rgba(139, 92, 246, 0.32);
+}
+
+.math-slot-empty:hover {
+  background: rgba(139, 92, 246, 0.13);
+}
+
+.math-slot[data-over] {
+  background: rgba(139, 92, 246, 0.2);
+  box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.35) inset;
+}
+
+/* The equation's top-level slot must fill the whole canvas width (rather
+   than shrink-wrap its content) so its droppable area covers the empty
+   space beside existing widgets. Otherwise a drop out there has no droppable
+   under the cursor and falls back to whichever small nested slot happens to
+   be nearest, nesting new content inside the last widget instead of adding
+   it alongside.
+   Normal block flow (not flexbox) so ordinary inline widgets — fractions,
+   symbols, operators — flow together in a row and wrap like words in a
+   sentence, the way a real equation reads. Text/Math run widgets are the
+   Text/Math run widgets (.widget-textrun/.widget-mathrun) flow inline right
+   alongside everything else — they share a line with whatever fits next to
+   them, and only drop to a new one once they (or the next widget) don't. */
+.block-root-slot {
+  display: block;
+  width: 100%;
+}
+.block-root-slot.align-left {
+  text-align: left;
+}
+.block-root-slot.align-center {
+  text-align: center;
+}
+.block-root-slot.align-right {
+  text-align: right;
+}
+
+/* A slot containing a New Line marker splits into one genuinely separate
+   box per line (see MathSlot) instead of one flat row that merely wraps —
+   each is its own drop target and typing area, so content dropped into line
+   2 can't end up appended after line 3's content the way a single shared
+   array with only a visual break would risk. Each line's box is always
+   shaded (not just when literally empty), so the boxes read as distinct
+   fillable regions separated by the New Line dividers. */
+.math-slot-lines {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 6px;
+}
+
+/* Boxes always stretch to the full width of the equation canvas — alignment
+   now controls where *content* sits within each box (justify-content
+   below) rather than how wide/positioned the box itself is. */
+.math-slot-line-row {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.math-slot-line {
+  display: flex;
+  width: 100%;
+  min-width: 48px;
+  min-height: 34px;
+  background: rgba(139, 92, 246, 0.075);
+  border: 1.5px dashed rgba(139, 92, 246, 0.28);
+  border-radius: 8px;
+}
+.math-slot-line:hover {
+  background: rgba(139, 92, 246, 0.13);
+}
+.math-slot-lines.align-left .math-slot-line {
+  justify-content: flex-start;
+}
+.math-slot-lines.align-center .math-slot-line {
+  justify-content: center;
+}
+.math-slot-lines.align-right .math-slot-line {
+  justify-content: flex-end;
+}
+
+.newline-divider {
+  align-self: center;
+  margin: 2px 0;
+}
+.newline-divider-label {
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: var(--purple-strong);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px dashed rgba(139, 92, 246, 0.35);
+  border-radius: 999px;
+  padding: 3px 12px;
+  white-space: nowrap;
+}
+
+.text-cell {
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--paper-text);
+  font-size: inherit;
+  font-family: 'Cambria Math', Cambria, 'Latin Modern Math', serif;
+  padding: 1px 2px;
+  min-width: 6px;
+}
+
+.text-cell-ghost {
+  min-width: 5px;
+}
+
+/* Composes with .text-cell (kept alongside it, not replacing it) to turn the
+   cell into a wrapping, auto-growing-height textarea instead of a
+   single-line auto-growing-width input — see AutoWidthTextInput's `wrap`. */
+.text-cell-wrap {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  resize: none;
+  overflow: hidden;
+  /* A <textarea> always renders leading/trailing spaces in its value
+     exactly as typed, but the mirror span (used only to size the box) is a
+     normal element whose default white-space: normal collapses/hides a
+     leading space — under-measuring the box by that space's width and
+     cutting off the last character. pre-wrap preserves it on both, so the
+     mirror's measured size actually matches what the textarea renders. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* The slot itself needs to actually wrap its line once content is wide
+   enough, and take the widget's full width so % sizing on the textarea
+   means something (an inline-flex box with no width constraint just grows
+   to fit content instead of ever triggering a wrap). */
+.math-slot-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  width: 100%;
+}
+
+.autowidth-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Wrap-mode text field: the real <textarea> and an invisible mirror span
+   share the same grid cell so the grid — and every ancestor shrink-wrapping
+   around it — sizes off the mirror's accurate content size instead of the
+   textarea's cols-based intrinsic guess. Both stretch (grid's default) to
+   whichever of the two ends up larger, so the mirror's own wrapping and the
+   textarea's wrapping always land at the same width. */
+.text-cell-wrap-container {
+  display: grid;
+}
+.text-cell-wrap-container > * {
+  grid-area: 1 / 1;
+}
+.text-cell-wrap-mirror {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.autowidth-mirror {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  white-space: pre;
+  display: inline-block;
+  height: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.node-wrap {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  border-radius: 8px;
+  padding: 1px 2px;
+  vertical-align: middle;
+  transition: padding-right 0.12s ease;
+}
+/* Only grows to make room for the delete tab (see .node-delete, same
+   clamp) while actually hovered — otherwise every box would sit wider than
+   its content needs at all times just to reserve space rarely used. Skipped
+   entirely for a node marked not deletable (no tab ever renders for it), so
+   it doesn't grow on hover only to shrink back with nothing to show for it. */
+.node-wrap:not([data-deletable='false']):hover,
+.node-wrap-text:not([data-deletable='false']):hover {
+  padding-right: clamp(12px, 1em, 16px);
+}
+
+.node-wrap[data-draggable] {
+  cursor: grab;
+}
+.node-wrap[data-draggable]:active {
+  cursor: grabbing;
+}
+
+.node-wrap[data-over] {
+  background: rgba(96, 165, 250, 0.16);
+  box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.4) inset;
+}
+
+.node-wrap[data-dragging] {
+  opacity: 0.3;
+}
+
+/* A red-tinted tab flush against the box's right edge, spanning its full
+   height — reads as an attached "delete" strip on the box rather than a
+   floating badge overlapping its corner. Sized in em so it scales down
+   along with small contexts (a limit's subscript, a lone typed character)
+   instead of staying a fixed width that overwhelms them. */
+.node-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 1em;
+  min-width: 12px;
+  max-width: 16px;
+  border: none;
+  border-radius: 0 7px 7px 0;
+  background: rgba(239, 68, 68, 0.16);
+  color: #dc2626;
+  font-size: 0.65em;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s ease, background 0.12s ease;
+  z-index: 2;
+}
+/* Direct-child combinator, not a descendant selector — a fraction widget
+   nests its numerator/denominator's own .node-wrap-text boxes inside its
+   own .node-wrap, and a descendant selector would reveal every nested
+   delete tab at once whenever the outer widget is hovered, instead of only
+   the specific box the cursor is actually over. */
+.node-wrap:hover > .node-delete,
+.node-wrap-text:hover > .node-delete {
+  opacity: 1;
+}
+.node-delete:hover {
+  background: rgba(239, 68, 68, 0.34);
+  color: #b91c1c;
+}
+
+/* Warns that math-mode content (\text{}, bare math, raw math source) won't
+   auto-wrap when compiled and may run off the page — a real LaTeX
+   limitation, not something CSS in the editor can fix, so the best we can
+   do is flag it before it's a surprise in the compiled PDF. */
+.overflow-warning-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  margin-left: 4px;
+  color: #b45309;
+  font-size: 0.85em;
+  line-height: 1;
+  cursor: help;
+}
+
+.overflow-warning-badge-corner {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(217, 119, 6, 0.14);
+  border: 1px solid rgba(217, 119, 6, 0.35);
+  font-size: 13px;
+  z-index: 3;
+}
+
+.widget {
+  display: inline-flex;
+  align-items: center;
+  margin: 0 3px;
+  padding: 4px 6px;
+  border-radius: 10px;
+  transition: background 0.12s ease;
+}
+.widget:hover {
+  background: rgba(139, 92, 246, 0.06);
+}
+
+/* Fraction */
+.widget-frac .frac-col {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+}
+.frac-num,
+.frac-den {
+  justify-content: center;
+}
+.frac-bar {
+  width: 100%;
+  height: 2px;
+  background: var(--paper-text);
+  border-radius: 2px;
+  margin: 3px 0;
+  min-width: 24px;
+}
+
+/* Square root — no overline bar (it never lined up cleanly with the "√"
+   glyph's stroke regardless of alignment strategy). Just the tick, centered
+   next to the shaded radicand box. */
+.widget-sqrt {
+  gap: 0;
+}
+.sqrt-index {
+  align-self: flex-start;
+  transform: translate(6px, 2px) scale(0.72);
+  min-height: 20px;
+  /* The transform above shifts the index right visually without reserving
+     any extra layout space for it — when the index is empty (near-zero
+     width), that shift lands right on top of the radicand next to it. A
+     real margin actually pushes the radicand over to make room, instead of
+     relying on the index happening to have enough content of its own. */
+  margin-right: 8px;
+}
+.sqrt-body {
+  display: inline-flex;
+  align-items: center;
+}
+.sqrt-symbol {
+  font-size: 1.3em;
+  line-height: 1;
+  margin-right: 2px;
+}
+
+/* Superscript / subscript — the stack always has two anchor children (a real
+   slot or an invisible spacer) so justify-content: space-between reliably
+   pins a lone superscript to the top and a lone subscript to the bottom,
+   instead of both collapsing to the vertical center of the base. */
+.widget-supsub {
+  gap: 2px;
+}
+.supsub-stack {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+  min-height: 32px;
+  font-size: 0.72em;
+  margin-left: 1px;
+}
+.supsub-sup,
+.supsub-sub {
+  min-height: 14px;
+  padding: 0 2px;
+}
+.supsub-spacer {
+  display: block;
+  width: 1px;
+  height: 1px;
+  flex: 0 0 auto;
+}
+
+/* Big operators (sum, product, integral, limit) — the sub/sup slots are the
+   operator's limits, typeset stacked directly above and below the glyph
+   (centered), not offset to the corner like a regular superscript. */
+.widget-bigop {
+  padding: 4px 10px;
+}
+.bigop-stack {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.bigop-glyph {
+  font-size: 1.7em;
+  line-height: 1;
+  font-family: 'Cambria Math', Cambria, serif;
+  padding: 0 2px;
+}
+.bigop-sup,
+.bigop-sub {
+  font-size: 0.7em;
+  min-height: 17px;
+  min-width: 17px;
+  padding: 1px 4px;
+  justify-content: center;
+}
+
+/* The empty placeholder boxes on either side of \to (see factory.ts's 'lim'
+   case) are otherwise a near-invisible sliver — a slightly darker fill
+   makes them read as clickable "space" slots rather than empty margin. */
+.bigop-sub .node-wrap-text[data-empty] .text-cell {
+  background: rgba(139, 92, 246, 0.16);
+  border-radius: 4px;
+}
+
+
+/* Groups / brackets */
+.widget-group {
+  gap: 1px;
+}
+.group-delim {
+  font-size: 1.3em;
+  color: var(--purple-strong);
+  font-weight: 300;
+}
+
+/* Text run (\text{...}). display: flex (block-level, not inline-flex) makes
+   it always start its own line among sibling widgets in the equation canvas
+   — like a <div> would among inline content — regardless of how wide it
+   renders. width: fit-content then grows it with its own content — short
+   text stays a small box — while max-width caps it at the canvas's full
+   width so it never overflows, and (since long unbroken content's
+   max-content width is huge regardless of where it can soft-wrap) that same
+   cap is what makes a widget with enough content to need wrapping end up
+   spanning the full width rather than an arbitrary fixed one. */
+.widget-textrun {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0;
+  background: rgba(244, 114, 182, 0.08);
+  border: 1px solid rgba(244, 114, 182, 0.22);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+.textrun-inner {
+  font-style: normal;
+}
+.textrun-inner .text-cell {
+  font-family:
+    'Segoe UI',
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  font-style: normal;
+}
+
+/* Math run — a bare math-mode grouping box, e.g. for writing out a function
+   like f(x). Blue-tinted so it reads as the opposite of the pink \text{}
+   box: this one stays in normal (italic) math typesetting. */
+.widget-mathrun {
+  display: inline-flex;
+  width: fit-content;
+  max-width: 100%;
+  box-sizing: border-box;
+  margin: 4px 0;
+  background: rgba(96, 165, 250, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.25);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+
+/* Text style / size commands (\Large, \textbf, ...). Amber-tinted as a third
+   distinct color alongside the pink \text{} and blue math-group boxes. The
+   font-size/weight/style is applied directly to the wrapper so the widget
+   itself previews the effect live — the inner slot's .text-cell inherits it. */
+.widget-cmdrun {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(217, 119, 6, 0.28);
+  border-radius: 8px;
+  padding: 2px 8px;
+}
+.cmd-tiny {
+  font-size: 0.5em;
+}
+.cmd-scriptsize {
+  font-size: 0.6em;
+}
+.cmd-footnotesize {
+  font-size: 0.71em;
+}
+.cmd-small {
+  font-size: 0.85em;
+}
+.cmd-normalsize {
+  font-size: 1em;
+}
+.cmd-large {
+  font-size: 1.15em;
+}
+.cmd-Large {
+  font-size: 1.3em;
+}
+.cmd-LARGE {
+  font-size: 1.5em;
+}
+.cmd-huge {
+  font-size: 1.7em;
+}
+.cmd-Huge {
+  font-size: 1.9em;
+}
+.cmd-textbf {
+  font-weight: 800;
+}
+.cmd-textit,
+.cmd-emph {
+  font-style: italic;
+}
+.cmd-underline {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Matrix */
+.widget-matrix {
+  gap: 3px;
+}
+.matrix-delim {
+  font-size: 1.6em;
+  color: var(--purple-strong);
+  font-weight: 200;
+  align-self: stretch;
+  display: flex;
+  align-items: center;
+}
+.matrix-grid {
+  display: grid;
+  gap: 4px 10px;
+  padding: 2px 4px;
+}
+.matrix-cell {
+  justify-content: center;
+  border-bottom: 1px dashed rgba(139, 92, 246, 0.18);
+}
+
+/* Sidebar drag overlay */
+.drag-overlay-chip {
+  /* Block-level with no explicit width stretches to fill DragOverlay's
+     positioning wrapper instead of hugging the content — shrink to fit. */
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  /* Solid white, not --paper — the chip is dragged over a --paper-colored
+     page, and a same-color fill made it read as a hollow outline. A small,
+     tight shadow (not the earlier 40px glow) gives it just enough depth to
+     read as a separate card without producing a ghosted halo. */
+  background: #ffffff;
+  color: var(--paper-text);
+  font-weight: 600;
+  border: 1.5px solid rgba(139, 92, 246, 0.4);
+  box-shadow: 0 2px 8px rgba(31, 16, 58, 0.16);
+  font-size: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+  transition: opacity 0.1s ease, transform 0.1s ease;
+}
+/* While hovering a valid drop target, shrink and fade the chip so the
+   highlighted box underneath (e.g. a nested widget's own slot) is actually
+   visible instead of fully covered — makes it clear exactly what you're over. */
+.drag-overlay-chip[data-shrink] {
+  opacity: 0.45;
+  transform: scale(0.72);
+}
+
+/* Full-block drag preview — the picked-up box itself, following the cursor. */
+.block-drag-preview {
+  width: 600px;
+  max-width: 82vw;
+  display: flex;
+  padding: 18px 22px;
+  border-radius: var(--radius-lg);
+  background: #ffffff;
+  color: var(--paper-text);
+  border: 1.5px solid rgba(139, 92, 246, 0.35);
+  box-shadow: 0 14px 34px rgba(31, 16, 58, 0.28);
+  cursor: grabbing;
+  pointer-events: none;
+}
+.block-drag-preview.align-left {
+  justify-content: flex-start;
+}
+.block-drag-preview.align-center {
+  justify-content: center;
+}
+.block-drag-preview.align-right {
+  justify-content: flex-end;
+}
+.block-drag-preview-text {
+  width: 100%;
+  white-space: pre-wrap;
+  font-size: 16px;
+  line-height: 1.7;
+}
