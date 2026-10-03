@@ -29,7 +29,8 @@ const COMPILE_MAX_BUFFER_BYTES = 10 * 1024 * 1024
 function resolvePdflatexPath(): string {
   const candidates = [
     join(process.env['LOCALAPPDATA'] ?? '', 'Programs', 'MiKTeX', 'miktex', 'bin', 'x64', 'pdflatex.exe'),
-    'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe'
+    'C:\\Program Files\\MiKTeX\\miktex\\bin\\x64\\pdflatex.exe',
+    '/Library/TeX/texbin/pdflatex'
   ]
   return candidates.find((candidate) => candidate && existsSync(candidate)) ?? 'pdflatex'
 }
@@ -176,8 +177,7 @@ function registerIpcHandlers(): void {
     const pdf = await win.webContents.printToPDF({
       printBackground: true,
       landscape: false,
-      pageSize: 'Letter',
-      margins: { marginType: 'default' }
+      pageSize: 'Letter'
     })
     await writeFile(filePath, pdf)
     return { canceled: false, filePath }
