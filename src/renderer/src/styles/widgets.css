@@ -71,16 +71,21 @@
 }
 
 /* Boxes always stretch to the full width of the equation canvas — alignment
-   now controls where *content* sits within each box (justify-content
-   below) rather than how wide/positioned the box itself is. */
+   now controls where *content* sits within each box (text-align below)
+   rather than how wide/positioned the box itself is. */
 .math-slot-line-row {
   display: flex;
   flex-direction: column;
   width: 100%;
 }
 
+/* Each line flows exactly like a single-line .block-root-slot above: normal
+   block flow, so its widgets sit inline and wrap like words. A flex row here
+   never wraps — everything on the line was squeezed into one row, crushing
+   Text widgets down to a character wide. Alignment is text-align (below) for
+   the same reason the root slot uses it. */
 .math-slot-line {
-  display: flex;
+  display: block;
   width: 100%;
   min-width: 48px;
   min-height: 34px;
@@ -92,13 +97,13 @@
   background: rgba(139, 92, 246, 0.13);
 }
 .math-slot-lines.align-left .math-slot-line {
-  justify-content: flex-start;
+  text-align: left;
 }
 .math-slot-lines.align-center .math-slot-line {
-  justify-content: center;
+  text-align: center;
 }
 .math-slot-lines.align-right .math-slot-line {
-  justify-content: flex-end;
+  text-align: right;
 }
 
 .newline-divider {
