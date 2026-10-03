@@ -4,6 +4,16 @@ release/
 dist/
 *.log
 
+# secrets and local credentials — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+.npmrc
+
 # stray native build artifacts
 main.exe
 main.ilk
