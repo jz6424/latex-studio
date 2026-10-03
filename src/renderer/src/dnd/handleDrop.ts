@@ -1,5 +1,6 @@
 import type { DragEndEvent } from '@dnd-kit/core'
 import { useDocStore } from '../model/store'
+import type { BlockPlacement } from '../model/blockTree'
 import type { BlockId, DocState, MatrixKind, SlotId, ToolId } from '../model/types'
 import { readDragData, readDropData, type DragData, type DropData } from './dragData'
 
@@ -40,8 +41,9 @@ export function applyDrop(event: DragEndEvent): PendingMatrixDrop | undefined {
   if (dragged.origin === 'sidebar' && isMatrixNTool(dragged.toolId)) {
     return { kind: dragged.toolId === 'pmatrixN' ? 'pmatrix' : 'bmatrix', target }
   }
-  if (target.origin === 'page') {
-    startNewEquation(dragged)
+  const equationPlacement = newEquationPlacement(target)
+  if (equationPlacement !== null) {
+    startNewEquation(dragged, equationPlacement)
     return undefined
   }
   insertIntoSlot(dragged, target)
@@ -52,20 +54,38 @@ function isMatrixNTool(toolId: ToolId): toolId is 'pmatrixN' | 'bmatrixN' {
   return toolId === 'pmatrixN' || toolId === 'bmatrixN'
 }
 
+/** Where a sidebar tool dropped on `target` should start a new equation: the
+ * end of the page (undefined) or of a list item. Null when the target is
+ * something else — a slot or node, which the tool goes into directly. */
+function newEquationPlacement(target: DropData): BlockPlacement | undefined | null {
+  if (target.origin === 'page') return undefined
+  if (target.origin === 'item') return { itemId: target.itemId }
+  return null
+}
+
+/** Creates a display equation at `placement` and returns its root slot, ready
+ * for the dropped tool to land in. */
+function addEquationAt(placement: BlockPlacement | undefined): SlotId | null {
+  const store = useDocStore.getState()
+  const blockId = store.addMathBlock(true, placement)
+  if (!blockId) return null
+  // Re-read: the block created above only exists in the store's next state.
+  const block = useDocStore.getState().doc.blocksById[blockId]
+  return block?.type === 'math' ? block.rootSlot : null
+}
+
 /** Places a matrix of an explicit shape wherever a PendingMatrixDrop's tool
- * was originally dropped — the empty area below the document (a new
- * equation), an existing slot, or beside an existing node. Called once the
- * dimensions dialog is confirmed; nothing was created before this point, so
- * cancelling the dialog just discards the pending request untouched. */
+ * was originally dropped — the empty area below the document or a list item
+ * (a new equation), an existing slot, or beside an existing node. Called once
+ * the dimensions dialog is confirmed; nothing was created before this point,
+ * so cancelling the dialog just discards the pending request untouched. */
 export function placeMatrix(kind: MatrixKind, rows: number, cols: number, target: DropData): void {
   const store = useDocStore.getState()
 
-  if (target.origin === 'page') {
-    store.addMathBlock(true)
-    // Re-read: the block created above only exists in the store's next state.
-    const doc = useDocStore.getState().doc
-    const newBlock = doc.blocksById[doc.blocks[doc.blocks.length - 1]]
-    if (newBlock?.type === 'math') store.dropMatrixIntoSlot(kind, rows, cols, newBlock.rootSlot)
+  const equationPlacement = newEquationPlacement(target)
+  if (equationPlacement !== null) {
+    const rootSlot = addEquationAt(equationPlacement)
+    if (rootSlot) store.dropMatrixIntoSlot(kind, rows, cols, rootSlot)
     return
   }
 
@@ -74,36 +94,35 @@ export function placeMatrix(kind: MatrixKind, rows: number, cols: number, target
   store.dropMatrixIntoSlot(kind, rows, cols, destination.slotId, destination.index)
 }
 
-/** Moves a block to the position of whatever it was dropped on, or to the end
- * of the document when dropped on the empty area past the last block. */
+/** Moves a block to the position of whatever it was dropped on: another
+ * block's spot (in whichever list item or page it's in), the end of a list
+ * item, or the end of the document past the last block. The store refuses
+ * moves that don't fit — a list into itself, a heading into a list, or a list
+ * nested past LaTeX's limit. */
 function reorderBlock(blockId: BlockId, target: DropData): void {
   const store = useDocStore.getState()
-
-  if (target.origin === 'page') {
-    store.moveBlock(blockId, store.doc.blocks.length)
-    return
+  switch (target.origin) {
+    case 'page':
+      store.moveBlock(blockId)
+      return
+    case 'item':
+      store.moveBlock(blockId, { itemId: target.itemId })
+      return
+    case 'block':
+      store.moveBlock(blockId, { atBlockId: target.blockId })
+      return
   }
-  // Dropping a block on itself is a no-op, not a move to index 0.
-  if (target.origin !== 'block' || target.blockId === blockId) return
-
-  const targetIndex = store.doc.blocks.indexOf(target.blockId)
-  if (targetIndex !== -1) store.moveBlock(blockId, targetIndex)
 }
 
-/** A sidebar tool dropped on the empty area below the document creates a
- * display equation and lands inside it, so starting a new equation takes one
- * gesture instead of "add a block, then drag into it". Dragging an existing
- * node there does nothing — it is already placed somewhere. */
-function startNewEquation(dragged: DragData): void {
+/** A sidebar tool dropped on the empty area below the document, or on a list
+ * item, creates a display equation there and lands inside it, so starting a
+ * new equation takes one gesture instead of "add a block, then drag into it".
+ * Dragging an existing node there does nothing — it is already placed
+ * somewhere. */
+function startNewEquation(dragged: DragData, placement: BlockPlacement | undefined): void {
   if (dragged.origin !== 'sidebar') return
-
-  const store = useDocStore.getState()
-  store.addMathBlock(true)
-
-  // Re-read: the block created above only exists in the store's next state.
-  const doc = useDocStore.getState().doc
-  const newBlock = doc.blocksById[doc.blocks[doc.blocks.length - 1]]
-  if (newBlock?.type === 'math') store.dropToolIntoSlot(dragged.toolId, newBlock.rootSlot)
+  const rootSlot = addEquationAt(placement)
+  if (rootSlot) useDocStore.getState().dropToolIntoSlot(dragged.toolId, rootSlot)
 }
 
 /** Places a tool or an existing node into a slot, at the position implied by

@@ -3,8 +3,10 @@ import AlignControls from './AlignControls'
 import type { Align } from '../model/types'
 
 interface Props {
-  align: Align
-  onAlign: (align: Align) => void
+  /** Current alignment. Together with onAlign, omitted by lists, whose
+   * children each keep their own alignment instead. */
+  align?: Align
+  onAlign?: (align: Align) => void
   /** Current display/inline state. Together with onToggleDisplay, omitted by
    * block types that have no such distinction (text, headings). */
   display?: boolean
@@ -53,10 +55,12 @@ export default function BlockMenu({
         <div className="block-menu-panel">
           {/* Alignment stays inline rather than becoming menu items — it's a
               three-way choice with a current value, not an action. */}
-          <div className="block-menu-row">
-            <span className="block-menu-label">Align</span>
-            <AlignControls align={align} onChange={onAlign} />
-          </div>
+          {align && onAlign && (
+            <div className="block-menu-row">
+              <span className="block-menu-label">Align</span>
+              <AlignControls align={align} onChange={onAlign} />
+            </div>
+          )}
 
           {onToggleDisplay && (
             <MenuItem onSelect={onToggleDisplay} close={() => setOpen(false)}>

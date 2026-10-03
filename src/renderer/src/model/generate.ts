@@ -1,4 +1,5 @@
-import type { Align, BigOp, Block, DocState, NodeId, SlotId } from './types'
+import type { Align, BigOp, Block, DocState, ListBlock, NodeId, SlotId } from './types'
+import { enumerateLabelSpec } from './lists'
 
 /**
  * Turns the document model into LaTeX source.
@@ -228,9 +229,63 @@ function wrapStructureAlign(content: string, align: Align): string {
   return `{\\${declaration}\n${content}\n\\par}`
 }
 
+// --- Lists -------------------------------------------------------------------
+
+const LIST_ALIGN_DECLARATION: Record<Align, string | null> = {
+  left: null,
+  center: 'centering',
+  right: 'raggedleft'
+}
+
+/**
+ * Alignment inside a list item can't use wrapAlign's environments or
+ * wrapStructureAlign's bare declarations — confirmed against a real compile,
+ * both drag the item's label along with the content: a centered first
+ * paragraph puts "b)" in the middle of the line with it. A top-aligned
+ * minipage the width of the item keeps the label at the left margin, lines
+ * its first baseline up with the label, and still wraps long text inside it.
+ * Left is the natural flow inside an item, so it needs no wrapper at all.
+ */
+function wrapListAlign(content: string, align: Align): string {
+  const declaration = LIST_ALIGN_DECLARATION[align]
+  if (!declaration) return content
+  return `\\begin{minipage}[t]{\\linewidth}\\${declaration}\n${content}\n\\end{minipage}`
+}
+
+function listToLatex(doc: DocState, list: ListBlock): string {
+  // An item-less list is a compile error ("Something's wrong--perhaps a
+  // missing \item"), so it emits nothing until it has an item.
+  if (list.items.length === 0) return ''
+
+  const spec = enumerateLabelSpec(list.numbering, list.labelFormat)
+  const env = spec ? 'enumerate' : 'itemize'
+  // The enumerate package swaps the counter letter in `[a)]` for the live
+  // counter, at any nesting depth — no \labelenumi/\labelenumii juggling.
+  const options = spec ? `[${spec}]` : ''
+
+  const items = list.items.map((item) => {
+    const content = item.blocks
+      .map((id) => doc.blocksById[id])
+      .filter((block): block is Block => Boolean(block))
+      .map((block) => blockToLatex(doc, block, true))
+      .filter((latex) => latex.trim() !== '')
+      .join('\n\n')
+    return content ? `\\item ${content}` : '\\item'
+  })
+  return `\\begin{${env}}${options}\n${items.join('\n')}\n\\end{${env}}`
+}
+
 // --- Whole document ----------------------------------------------------------
 
-function blockToLatex(doc: DocState, block: Block): string {
+/**
+ * `inList` is set for blocks inside a list item, which align with
+ * wrapListAlign instead of environments. Their math also always takes
+ * wrapMath's `\displaystyle` path (by passing it a non-center alignment):
+ * a `\[...\]` as an item's content starts a new line, leaving the item's
+ * label stranded alone on the line above it.
+ */
+function blockToLatex(doc: DocState, block: Block, inList = false): string {
+  const wrap = inList ? wrapListAlign : wrapAlign
   switch (block.type) {
     case 'text': {
       const processed = protectLongTokens(block.text)
@@ -239,18 +294,20 @@ function blockToLatex(doc: DocState, block: Block): string {
       // block type below, which sidesteps needing to detect this at all.
       return STRUCTURE_COMMAND.test(block.text)
         ? wrapStructureAlign(processed, block.align)
-        : wrapAlign(processed, block.align)
+        : wrap(processed, block.align)
     }
     case 'heading':
       return wrapStructureAlign(`\\${block.level}{${block.text}}`, block.align)
     case 'rawmath':
-      return wrapAlign(wrapMath(block.source, block.display, block.align), block.align)
+      return wrap(wrapMath(block.source, block.display, inList ? 'left' : block.align), block.align)
     case 'math':
-      return wrapAlign(mathBlockToLatex(doc, block.rootSlot, block.display, block.align), block.align)
+      return wrap(mathBlockToLatex(doc, block.rootSlot, block.display, inList ? 'left' : block.align), block.align)
+    case 'list':
+      return listToLatex(doc, block)
   }
 }
 
-const PREAMBLE_PACKAGES = ['amsmath', 'amssymb', 'amsfonts', 'seqsplit']
+const PREAMBLE_PACKAGES = ['amsmath', 'amssymb', 'amsfonts', 'seqsplit', 'enumerate']
 
 /** Full standalone .tex document source for the whole page. */
 export function documentToLatex(doc: DocState): string {

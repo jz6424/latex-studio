@@ -1,5 +1,5 @@
 import type { Active, Over } from '@dnd-kit/core'
-import type { BlockId, NodeId, SlotId, ToolId } from '../model/types'
+import type { BlockId, ListItemId, NodeId, SlotId, ToolId } from '../model/types'
 
 /**
  * Every drag-and-drop payload in the app, in one place.
@@ -31,6 +31,9 @@ export type DropData =
   | { origin: 'page' }
   /** A block, meaning "move the dragged block to this block's position". */
   | { origin: 'block'; blockId: BlockId }
+  /** A list item, meaning "add to the end of this item" — a moved block, or
+   * a new equation for a sidebar tool. */
+  | { origin: 'item'; itemId: ListItemId }
 
 // --- Droppable/draggable ids -------------------------------------------------
 // Ids must be unique across the whole DndContext, so each kind of target gets
@@ -42,6 +45,7 @@ export const PAGE_END_DROP_ID = 'page-end'
 export const sidebarToolDragId = (toolId: ToolId): string => `sidebar:${toolId}`
 export const blockDragId = (blockId: BlockId): string => `block:${blockId}`
 export const blockDropId = (blockId: BlockId): string => `blockover:${blockId}`
+export const listItemDropId = (itemId: ListItemId): string => `item:${itemId}`
 export const nodeDropId = (nodeId: NodeId): string => `nodeover:${nodeId}`
 export const slotDropId = (slotId: SlotId): string => `slot:${slotId}`
 export const slotLineDropId = (slotId: SlotId, lineIndex: number): string =>

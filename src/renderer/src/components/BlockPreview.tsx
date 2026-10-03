@@ -1,13 +1,17 @@
 import { useDocStore } from '../model/store'
 import type { Block, DocState } from '../model/types'
 import { slotToLatex } from '../model/generate'
+import { bulletLevelOfList } from '../model/blockTree'
+import { listItemLabel } from '../model/lists'
 import KatexView from './KatexView'
 
 /** Non-interactive visual snapshot of a block, used as the DragOverlay content
  * so the actual box appears to be picked up and moved, not just a small label. */
 export default function BlockPreview({ block }: { block: Block }): JSX.Element {
   const doc = useDocStore((s) => s.doc)
-  return <div className={`block-drag-preview align-${block.align}`}>{blockContent(block, doc)}</div>
+  // Lists have no alignment of their own; their preview reads left to right.
+  const align = block.type === 'list' ? 'left' : block.align
+  return <div className={`block-drag-preview align-${align}`}>{blockContent(block, doc)}</div>
 }
 
 /** Placeholder text stands in for an empty block so the dragged card still has
@@ -22,5 +26,24 @@ function blockContent(block: Block, doc: DocState): JSX.Element {
       return <KatexView latex={block.source} display={block.display} />
     case 'math':
       return <KatexView latex={slotToLatex(doc, block.rootSlot)} display={block.display} />
+    case 'list': {
+      const bulletLevel = bulletLevelOfList(doc, block.id)
+      if (block.items.length === 0) return <div className="block-drag-preview-text">Empty list</div>
+      return (
+        <div className="block-drag-preview-list">
+          {block.items.map((item, index) => (
+            <div className="block-drag-preview-list-item" key={item.id}>
+              <span className="list-item-label">{listItemLabel(block.numbering, block.labelFormat, index, bulletLevel)}</span>
+              <div>
+                {item.blocks.map((id) => {
+                  const child = doc.blocksById[id]
+                  return child ? <div key={id}>{blockContent(child, doc)}</div> : null
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
   }
 }

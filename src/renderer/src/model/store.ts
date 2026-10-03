@@ -1,9 +1,22 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
 import { nanoid } from 'nanoid'
-import type { Align, Block, BlockId, DocState, HeadingLevel, MatrixKind, NodeId, SlotId, ToolId } from './types'
+import type {
+  Align,
+  Block,
+  BlockId,
+  DocState,
+  HeadingLevel,
+  ListItem,
+  ListItemId,
+  ListLabelFormat,
+  ListNumbering,
+  MatrixKind,
+  NodeId,
+  SlotId,
+  ToolId
+} from './types'
 import {
-  cloneSlot,
   collectSlotsOfNode,
   createMatrixNode,
   deleteNodeDeep,
@@ -11,6 +24,16 @@ import {
   instantiateTool,
   newSlot
 } from './factory'
+import {
+  cloneBlockDeep,
+  deleteBlockDeep,
+  depthAtPlacement,
+  insertBlock,
+  moveBlock as moveBlockInTree,
+  removeBlock as removeBlockFromTree,
+  type BlockPlacement
+} from './blockTree'
+import { defaultListStyle } from './lists'
 
 /**
  * The single source of truth for the document, as an immer-backed zustand
@@ -33,20 +56,33 @@ interface Store {
    * opening a saved project from the home screen. */
   loadDocument: (doc: DocState) => void
 
-  // Blocks
-  addTextBlock: (afterBlockId?: BlockId) => void
-  addMathBlock: (display: boolean, afterBlockId?: BlockId) => void
-  addRawMathBlock: (display: boolean, afterBlockId?: BlockId) => void
-  addHeadingBlock: (level: HeadingLevel, afterBlockId?: BlockId) => void
+  // Blocks. An omitted placement means the end of the page; see BlockPlacement.
+  addTextBlock: (placement?: BlockPlacement) => void
+  /** Returns the new block's id, so a drop can fill it in right away — or
+   * null if the placement was refused. */
+  addMathBlock: (display: boolean, placement?: BlockPlacement) => BlockId | null
+  addRawMathBlock: (display: boolean, placement?: BlockPlacement) => void
+  addHeadingBlock: (level: HeadingLevel, placement?: BlockPlacement) => void
   removeBlock: (blockId: BlockId) => void
   duplicateBlock: (blockId: BlockId) => void
-  moveBlock: (blockId: BlockId, toIndex: number) => void
+  moveBlock: (blockId: BlockId, placement?: BlockPlacement) => void
   updateTextBlock: (blockId: BlockId, text: string) => void
   updateRawMathBlock: (blockId: BlockId, source: string) => void
   updateHeadingBlock: (blockId: BlockId, text: string) => void
   toggleBlockDisplay: (blockId: BlockId) => void
   toggleBlockCollapsed: (blockId: BlockId) => void
   setBlockAlign: (blockId: BlockId, align: Align) => void
+
+  // Lists
+  /** A new list starts with one item holding an empty text block, and with
+   * LaTeX's default label style for the depth it lands at. */
+  addListBlock: (placement?: BlockPlacement) => void
+  /** Adds an item (with an empty text block) after `afterItemId`, or at the end. */
+  addListItem: (listId: BlockId, afterItemId?: ListItemId) => void
+  removeListItem: (listId: BlockId, itemId: ListItemId) => void
+  /** Shifts an item one place up (-1) or down (+1) within its list. */
+  moveListItem: (listId: BlockId, itemId: ListItemId, offset: -1 | 1) => void
+  setListStyle: (listId: BlockId, numbering: ListNumbering, labelFormat: ListLabelFormat) => void
 
   // Math nodes within a block
   dropToolIntoSlot: (toolId: ToolId, slotId: SlotId, index?: number) => void
@@ -81,67 +117,51 @@ export const useDocStore = create<Store>()(
 
     // --- Blocks --------------------------------------------------------------
 
-    addTextBlock: (afterBlockId) =>
+    addTextBlock: (placement) =>
       set((s) => {
-        insertBlock(s.doc, { id: nanoid(8), type: 'text', text: '', align: 'left' }, afterBlockId)
+        insertBlock(s.doc, newTextBlock(), placement)
       }),
 
-    addMathBlock: (display, afterBlockId) =>
+    addMathBlock: (display, placement) => {
+      // Generated up front so it can be returned synchronously, as in
+      // createTextNodeInSlot below.
+      const id = nanoid(8)
+      let placed = false
       set((s) => {
         const rootSlot = newSlot(s.doc)
-        const block: Block = {
-          id: nanoid(8),
-          type: 'math',
-          display,
-          collapsed: false,
-          rootSlot,
-          align: 'center'
-        }
-        insertBlock(s.doc, block, afterBlockId)
+        const block: Block = { id, type: 'math', display, collapsed: false, rootSlot, align: 'center' }
+        placed = insertBlock(s.doc, block, placement)
+        if (!placed) delete s.doc.slots[rootSlot]
+      })
+      return placed ? id : null
+    },
+
+    addRawMathBlock: (display, placement) =>
+      set((s) => {
+        insertBlock(s.doc, { id: nanoid(8), type: 'rawmath', source: '', display, align: 'center' }, placement)
       }),
 
-    addRawMathBlock: (display, afterBlockId) =>
+    addHeadingBlock: (level, placement) =>
       set((s) => {
-        insertBlock(s.doc, { id: nanoid(8), type: 'rawmath', source: '', display, align: 'center' }, afterBlockId)
-      }),
-
-    addHeadingBlock: (level, afterBlockId) =>
-      set((s) => {
-        insertBlock(s.doc, { id: nanoid(8), type: 'heading', level, text: '', align: 'left' }, afterBlockId)
+        insertBlock(s.doc, { id: nanoid(8), type: 'heading', level, text: '', align: 'left' }, placement)
       }),
 
     removeBlock: (blockId) =>
       set((s) => {
-        const block = s.doc.blocksById[blockId]
-        if (!block) return
-        // Only widget-built math owns a node subtree; the other block types
-        // hold their content inline and need no extra cleanup.
-        if (block.type === 'math') {
-          for (const id of s.doc.slots[block.rootSlot] ?? []) deleteNodeDeep(s.doc, id)
-          delete s.doc.slots[block.rootSlot]
-        }
-        delete s.doc.blocksById[blockId]
-        s.doc.blocks = s.doc.blocks.filter((id) => id !== blockId)
+        removeBlockFromTree(s.doc, blockId)
       }),
 
     duplicateBlock: (blockId) =>
       set((s) => {
-        const block = s.doc.blocksById[blockId]
-        if (!block) return
-        const id = nanoid(8)
-        // A math block's rootSlot must be deep-copied, or the duplicate would
-        // share the original's nodes and the two would edit as one.
-        const copy: Block =
-          block.type === 'math' ? { ...block, id, rootSlot: cloneSlot(s.doc, block.rootSlot) } : { ...block, id }
-        insertBlock(s.doc, copy, blockId)
+        const copyId = cloneBlockDeep(s.doc, blockId)
+        if (!copyId) return
+        // The copy sits right after its original, in the same container.
+        if (!insertBlock(s.doc, s.doc.blocksById[copyId], { afterBlockId: blockId })) deleteBlockDeep(s.doc, copyId)
       }),
 
-    moveBlock: (blockId, toIndex) =>
+    moveBlock: (blockId, placement) =>
       set((s) => {
-        const from = s.doc.blocks.indexOf(blockId)
-        if (from === -1) return
-        s.doc.blocks.splice(from, 1)
-        s.doc.blocks.splice(clampIndex(toIndex, s.doc.blocks), 0, blockId)
+        moveBlockInTree(s.doc, blockId, placement)
       }),
 
     updateTextBlock: (blockId, text) =>
@@ -177,7 +197,60 @@ export const useDocStore = create<Store>()(
     setBlockAlign: (blockId, align) =>
       set((s) => {
         const block = s.doc.blocksById[blockId]
-        if (block) block.align = align
+        if (block && block.type !== 'list') block.align = align
+      }),
+
+    // --- Lists ---------------------------------------------------------------
+
+    addListBlock: (placement) =>
+      set((s) => {
+        const item = newListItem(s.doc)
+        const block: Block = {
+          id: nanoid(8),
+          type: 'list',
+          ...defaultListStyle(depthAtPlacement(s.doc, placement) + 1),
+          items: [item]
+        }
+        // The item's text block was registered by newListItem; if the list
+        // itself is refused (nested too deep), take it back out.
+        if (!insertBlock(s.doc, block, placement)) for (const id of item.blocks) deleteBlockDeep(s.doc, id)
+      }),
+
+    addListItem: (listId, afterItemId) =>
+      set((s) => {
+        const list = s.doc.blocksById[listId]
+        if (list?.type !== 'list') return
+        const after = afterItemId ? list.items.findIndex((i) => i.id === afterItemId) : -1
+        list.items.splice(after === -1 ? list.items.length : after + 1, 0, newListItem(s.doc))
+      }),
+
+    removeListItem: (listId, itemId) =>
+      set((s) => {
+        const list = s.doc.blocksById[listId]
+        if (list?.type !== 'list') return
+        const index = list.items.findIndex((i) => i.id === itemId)
+        if (index === -1) return
+        for (const childId of list.items[index].blocks) deleteBlockDeep(s.doc, childId)
+        list.items.splice(index, 1)
+      }),
+
+    moveListItem: (listId, itemId, offset) =>
+      set((s) => {
+        const list = s.doc.blocksById[listId]
+        if (list?.type !== 'list') return
+        const from = list.items.findIndex((i) => i.id === itemId)
+        const to = from + offset
+        if (from === -1 || to < 0 || to >= list.items.length) return
+        const [item] = list.items.splice(from, 1)
+        list.items.splice(to, 0, item)
+      }),
+
+    setListStyle: (listId, numbering, labelFormat) =>
+      set((s) => {
+        const list = s.doc.blocksById[listId]
+        if (list?.type !== 'list') return
+        list.numbering = numbering
+        list.labelFormat = labelFormat
       }),
 
     // --- Math nodes ----------------------------------------------------------
@@ -257,13 +330,16 @@ function clampIndex(index: number, array: unknown[]): number {
   return Math.max(0, Math.min(index, array.length))
 }
 
-/** Registers a block and places it in the page order — directly after
- * `afterBlockId`, or at the end when that is absent or unknown. */
-function insertBlock(doc: DocState, block: Block, afterBlockId?: BlockId): void {
-  doc.blocksById[block.id] = block
-  const after = afterBlockId ? doc.blocks.indexOf(afterBlockId) : -1
-  if (after === -1) doc.blocks.push(block.id)
-  else doc.blocks.splice(after + 1, 0, block.id)
+function newTextBlock(): Block {
+  return { id: nanoid(8), type: 'text', text: '', align: 'left' }
+}
+
+/** A fresh list item holding one empty text block, registered in the draft —
+ * an item always starts with somewhere to type. */
+function newListItem(doc: DocState): ListItem {
+  const text = newTextBlock()
+  doc.blocksById[text.id] = text
+  return { id: nanoid(8), blocks: [text.id] }
 }
 
 /** Every slot beneath a node, at any depth — used to reject drops that would

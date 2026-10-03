@@ -814,6 +814,162 @@
   text-align: right;
 }
 
+/* List blocks — a container whose items hold ordinary blocks. Each item is a
+   label column plus a body; the body's left padding leaves room for the
+   children's own drag handles (see .block-drag-wrapper's 26px gutter) so they
+   don't sit on top of the label. */
+.block-list {
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 12px 10px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(96, 165, 250, 0.04));
+}
+
+.list-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Clears the floating "⋮" toolbar in the top-right corner. */
+  padding: 0 40px 8px 4px;
+}
+
+.list-tag {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--purple-strong);
+  background: rgba(139, 92, 246, 0.1);
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  border-radius: 999px;
+  padding: 2px 9px;
+}
+
+.list-style-select {
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--paper-text);
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.25);
+  border-radius: 8px;
+  padding: 3px 6px;
+  cursor: pointer;
+}
+
+.list-items {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-item {
+  display: flex;
+  align-items: flex-start;
+  border-radius: var(--radius-sm);
+  padding: 2px 0;
+  transition: background 0.12s ease, box-shadow 0.12s ease;
+}
+.list-item[data-over] {
+  background: rgba(139, 92, 246, 0.08);
+  box-shadow: inset 0 0 0 1.5px var(--purple-strong);
+}
+
+.list-item-label {
+  flex: 0 0 auto;
+  min-width: 34px;
+  /* Lines the label up with the first line of a text block's textarea. */
+  padding-top: 6px;
+  text-align: right;
+  font-weight: 700;
+  color: var(--paper-text);
+  font-variant-numeric: tabular-nums;
+}
+
+.list-item-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-left: 30px;
+}
+
+.list-item-empty,
+.list-empty {
+  font-size: 13px;
+  color: rgba(36, 27, 59, 0.4);
+  padding: 6px 4px;
+}
+
+/* Revealed while hovering the item — but only the innermost one, so a nested
+   list's items don't light up every enclosing item's row at the same time. */
+.list-item-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+}
+.list-item:hover:not(:has(.list-item:hover)) > .list-item-body > .list-item-actions,
+.list-item-actions:focus-within {
+  opacity: 1;
+}
+
+.list-item-actions-spacer {
+  flex: 1;
+}
+
+.list-btn {
+  border: 1px solid rgba(139, 92, 246, 0.3);
+  background: rgba(139, 92, 246, 0.08);
+  color: #6d28d9;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+.list-btn:hover {
+  background: rgba(139, 92, 246, 0.16);
+}
+
+.list-add-item {
+  margin: 8px 0 0 64px;
+}
+
+.list-icon-btn {
+  width: 24px;
+  height: 24px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(36, 27, 59, 0.08);
+  color: var(--paper-text);
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+}
+.list-icon-btn:hover:not(:disabled) {
+  background: rgba(139, 92, 246, 0.18);
+}
+.list-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.list-icon-btn-danger:hover:not(:disabled) {
+  background: rgba(236, 72, 153, 0.16);
+  color: #be185d;
+}
+
+.list-warning {
+  margin: 8px 0 0 64px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #b45309;
+}
+
 .block-math {
   border: 1px dashed rgba(139, 92, 246, 0.25);
   border-radius: var(--radius-md);
@@ -997,8 +1153,17 @@
   .block-toolbar,
   .node-delete,
   .block-math-canvas,
-  .heading-level-tag {
+  .heading-level-tag,
+  .list-header,
+  .list-item-actions,
+  .list-add-item,
+  .list-item-empty,
+  .list-empty {
     display: none !important;
+  }
+  .block-list {
+    border: none !important;
+    background: none !important;
   }
   .block-math-preview {
     border-top: none !important;

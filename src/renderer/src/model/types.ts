@@ -1,6 +1,11 @@
 // Normalized document model.
 //
-// A document is a flat list of *blocks* (paragraphs, headings, equations).
+// A document is an ordered list of *blocks* (paragraphs, headings, equations,
+// lists). A list block is a container: each of its items holds its own ordered
+// run of child blocks, which may themselves be lists. Child blocks live in the
+// same flat `blocksById` map as top-level ones — only the page order
+// (`DocState.blocks`) and each item's `blocks` array say where a block sits.
+//
 // An equation block owns a tree built from two alternating kinds of thing:
 //   - a "slot" is an ordered sequence of node ids — a horizontal run of math
 //     content, and the only thing you can drop into;
@@ -16,6 +21,7 @@
 export type SlotId = string
 export type NodeId = string
 export type BlockId = string
+export type ListItemId = string
 
 // --- Math tree ---------------------------------------------------------------
 
@@ -54,6 +60,19 @@ export type Align = 'left' | 'center' | 'right'
 
 export type HeadingLevel = 'section' | 'subsection' | 'subsubsection'
 
+/** How list items are labelled: bullets, or a counter style matching LaTeX's
+ * `\arabic`, `\alph`, `\Alph`, `\roman`, `\Roman`. */
+export type ListNumbering = 'bullet' | 'arabic' | 'alph' | 'Alph' | 'roman' | 'Roman'
+
+/** The punctuation around a counter: `1.`, `1)`, or `(1)`. Ignored for bullets. */
+export type ListLabelFormat = 'period' | 'paren' | 'parens'
+
+export interface ListItem {
+  id: ListItemId
+  /** The item's content, in order. */
+  blocks: BlockId[]
+}
+
 export type Block =
   | { id: BlockId; type: 'text'; text: string; align: Align }
   /** An equation built from widgets. `collapsed` hides the builder, leaving
@@ -62,10 +81,19 @@ export type Block =
   /** An equation typed as raw LaTeX rather than assembled from widgets. */
   | { id: BlockId; type: 'rawmath'; source: string; display: boolean; align: Align }
   | { id: BlockId; type: 'heading'; level: HeadingLevel; text: string; align: Align }
+  /** An `itemize`/`enumerate` list whose items hold other blocks. Has no
+   * alignment of its own — its children each keep theirs. */
+  | { id: BlockId; type: 'list'; numbering: ListNumbering; labelFormat: ListLabelFormat; items: ListItem[] }
+
+export type ListBlock = Extract<Block, { type: 'list' }>
+
+/** Blocks that carry an alignment — every type except lists. */
+export type AlignedBlock = Exclude<Block, ListBlock>
 
 export interface DocState {
   title: string
-  /** Block order on the page. */
+  /** Top-level block order on the page. Blocks inside a list are ordered by
+   * their item instead, and don't appear here. */
   blocks: BlockId[]
   blocksById: Record<BlockId, Block>
   slots: Record<SlotId, NodeId[]>
