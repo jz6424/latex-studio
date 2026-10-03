@@ -139,6 +139,24 @@ const relations = symbolTools('Operators & Relations', [
   ['\u2203', '\\exists']
 ])
 
+// Labelled by connective name rather than glyph: ∧ and ∨ are easy to mix up
+// at a glance, and "and"/"xor" is what someone searching would type.
+// Implication (→, ⇒, ⇔) isn't repeated here — it's already under Arrows, and
+// a tool can only appear once, since its id doubles as its drag id.
+const logic = symbolTools('Logic', [
+  ['And', '\\land'],
+  ['Or', '\\lor'],
+  ['Not', '\\neg'],
+  ['XOR', '\\oplus'],
+  ['XOR (alt)', '\\veebar'],
+  ['Equivalent', '\\equiv'],
+  ['True', '\\top'],
+  ['False', '\\bot'],
+  ['Proves', '\\vdash'],
+  ['Models', '\\models'],
+  ['Therefore', '\\therefore']
+])
+
 // Labelled by command name, since the rendered preview above it already shows
 // the glyph and the name is what someone searching would type.
 const greek = symbolTools(
@@ -189,6 +207,7 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { name: 'Arrows', tools: arrows },
   { name: 'Brackets & Matrices', tools: brackets },
   { name: 'Operators & Relations', tools: relations },
+  { name: 'Logic', tools: logic },
   { name: 'Text Styles', tools: [...textSizes, ...styleFns] },
   { name: 'Greek Letters', tools: greek },
   { name: 'Functions', tools: functions }
