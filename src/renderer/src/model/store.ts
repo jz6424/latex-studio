@@ -12,6 +12,8 @@ import type {
   ListLabelFormat,
   ListNumbering,
   MatrixKind,
+  ProofRelation,
+  ProofStep,
   NodeId,
   SlotId,
   ToolId
@@ -27,6 +29,7 @@ import {
 import {
   cloneBlockDeep,
   deleteBlockDeep,
+  deleteSlotDeep,
   depthAtPlacement,
   insertBlock,
   moveBlock as moveBlockInTree,
@@ -34,6 +37,7 @@ import {
   type BlockPlacement
 } from './blockTree'
 import { defaultListStyle } from './lists'
+import { DEFAULT_PROOF_RELATION } from './proofs'
 
 /**
  * The single source of truth for the document, as an immer-backed zustand
@@ -49,6 +53,8 @@ interface Store {
   doc: DocState
 
   setTitle: (title: string) => void
+  setSubtitle: (subtitle: string) => void
+  setTitleOffset: (cm: number) => void
   /** Discards the current document and starts a fresh blank one — used by the
    * home screen's "+ Add New Project". */
   resetDocument: () => void
@@ -84,6 +90,17 @@ interface Store {
   moveListItem: (listId: BlockId, itemId: ListItemId, offset: -1 | 1) => void
   setListStyle: (listId: BlockId, numbering: ListNumbering, labelFormat: ListLabelFormat) => void
 
+  // Proofs
+  /** A new proof starts with one step: `[start] ≡ [step]`. */
+  addProofBlock: (placement?: BlockPlacement) => void
+  /** Adds a step after `afterStepId`, or at the end, using the same relation
+   * as the step before it. */
+  addProofStep: (proofId: BlockId, afterStepId?: string) => void
+  /** Refuses to remove a proof's only step — a proof is at least one line. */
+  removeProofStep: (proofId: BlockId, stepId: string) => void
+  setProofStepRelation: (proofId: BlockId, stepId: string, relation: ProofRelation) => void
+  setProofStepReason: (proofId: BlockId, stepId: string, reason: string) => void
+
   // Math nodes within a block
   dropToolIntoSlot: (toolId: ToolId, slotId: SlotId, index?: number) => void
   /** Places an M×N matrix whose dimensions were already collected at drop
@@ -103,6 +120,16 @@ export const useDocStore = create<Store>()(
     setTitle: (title) =>
       set((s) => {
         s.doc.title = title
+      }),
+
+    setSubtitle: (subtitle) =>
+      set((s) => {
+        s.doc.subtitle = subtitle
+      }),
+
+    setTitleOffset: (cm) =>
+      set((s) => {
+        s.doc.titleOffsetCm = cm
       }),
 
     resetDocument: () =>
@@ -197,7 +224,7 @@ export const useDocStore = create<Store>()(
     setBlockAlign: (blockId, align) =>
       set((s) => {
         const block = s.doc.blocksById[blockId]
-        if (block && block.type !== 'list') block.align = align
+        if (block && block.type !== 'list' && block.type !== 'proof') block.align = align
       }),
 
     // --- Lists ---------------------------------------------------------------
@@ -251,6 +278,55 @@ export const useDocStore = create<Store>()(
         if (list?.type !== 'list') return
         list.numbering = numbering
         list.labelFormat = labelFormat
+      }),
+
+    // --- Proofs --------------------------------------------------------------
+
+    addProofBlock: (placement) =>
+      set((s) => {
+        const startSlot = newSlot(s.doc)
+        const step = newProofStep(s.doc, DEFAULT_PROOF_RELATION)
+        const block: Block = { id: nanoid(8), type: 'proof', startSlot, steps: [step] }
+        if (!insertBlock(s.doc, block, placement)) {
+          deleteSlotDeep(s.doc, startSlot)
+          deleteSlotDeep(s.doc, step.slot)
+        }
+      }),
+
+    addProofStep: (proofId, afterStepId) =>
+      set((s) => {
+        const proof = s.doc.blocksById[proofId]
+        if (proof?.type !== 'proof') return
+        const found = afterStepId ? proof.steps.findIndex((st) => st.id === afterStepId) : -1
+        const after = found === -1 ? proof.steps.length - 1 : found
+        const relation = proof.steps[after]?.relation ?? DEFAULT_PROOF_RELATION
+        proof.steps.splice(after + 1, 0, newProofStep(s.doc, relation))
+      }),
+
+    removeProofStep: (proofId, stepId) =>
+      set((s) => {
+        const proof = s.doc.blocksById[proofId]
+        if (proof?.type !== 'proof' || proof.steps.length <= 1) return
+        const index = proof.steps.findIndex((st) => st.id === stepId)
+        if (index === -1) return
+        deleteSlotDeep(s.doc, proof.steps[index].slot)
+        proof.steps.splice(index, 1)
+      }),
+
+    setProofStepRelation: (proofId, stepId, relation) =>
+      set((s) => {
+        const proof = s.doc.blocksById[proofId]
+        if (proof?.type !== 'proof') return
+        const step = proof.steps.find((st) => st.id === stepId)
+        if (step) step.relation = relation
+      }),
+
+    setProofStepReason: (proofId, stepId, reason) =>
+      set((s) => {
+        const proof = s.doc.blocksById[proofId]
+        if (proof?.type !== 'proof') return
+        const step = proof.steps.find((st) => st.id === stepId)
+        if (step) step.reason = reason
       }),
 
     // --- Math nodes ----------------------------------------------------------
@@ -340,6 +416,11 @@ function newListItem(doc: DocState): ListItem {
   const text = newTextBlock()
   doc.blocksById[text.id] = text
   return { id: nanoid(8), blocks: [text.id] }
+}
+
+/** A fresh, empty proof line, with its slot registered in the draft. */
+function newProofStep(doc: DocState, relation: ProofRelation): ProofStep {
+  return { id: nanoid(8), relation, slot: newSlot(doc), reason: '' }
 }
 
 /** Every slot beneath a node, at any depth — used to reject drops that would

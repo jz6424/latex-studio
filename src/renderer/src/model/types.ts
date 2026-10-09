@@ -67,6 +67,18 @@ export type ListNumbering = 'bullet' | 'arabic' | 'alph' | 'Alph' | 'roman' | 'R
 /** The punctuation around a counter: `1.`, `1)`, or `(1)`. Ignored for bullets. */
 export type ListLabelFormat = 'period' | 'paren' | 'parens'
 
+/** The sign between two lines of a proof. */
+export type ProofRelation = 'eq' | 'equiv' | 'iff'
+
+/** One line of a proof: `<relation> <expression>`, plus an optional
+ * justification shown in its own column to the right. */
+export interface ProofStep {
+  id: string
+  relation: ProofRelation
+  slot: SlotId
+  reason: string
+}
+
 export interface ListItem {
   id: ListItemId
   /** The item's content, in order. */
@@ -84,14 +96,26 @@ export type Block =
   /** An `itemize`/`enumerate` list whose items hold other blocks. Has no
    * alignment of its own — its children each keep theirs. */
   | { id: BlockId; type: 'list'; numbering: ListNumbering; labelFormat: ListLabelFormat; items: ListItem[] }
+  /** A chain of equalities/equivalences typeset as an `align*`: `startSlot`
+   * is the expression on the first line's left, and each step adds a line
+   * `<relation> <expression>`. Relations line up in one column and reasons in
+   * another. Always has at least one step. Like a list, it has no alignment. */
+  | { id: BlockId; type: 'proof'; startSlot: SlotId; steps: ProofStep[] }
 
 export type ListBlock = Extract<Block, { type: 'list' }>
 
-/** Blocks that carry an alignment — every type except lists. */
-export type AlignedBlock = Exclude<Block, ListBlock>
+export type ProofBlock = Extract<Block, { type: 'proof' }>
+
+/** Blocks that carry an alignment — every type except lists and proofs. */
+export type AlignedBlock = Exclude<Block, ListBlock | ProofBlock>
 
 export interface DocState {
   title: string
+  /** Optional — absent in projects saved before these fields existed. */
+  subtitle?: string
+  /** Extra space above the title, in cm, relative to LaTeX's default
+   * placement. Negative pulls the title up toward the top of the page. */
+  titleOffsetCm?: number
   /** Top-level block order on the page. Blocks inside a list are ordered by
    * their item instead, and don't appear here. */
   blocks: BlockId[]

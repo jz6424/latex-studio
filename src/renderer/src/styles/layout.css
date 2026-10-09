@@ -338,15 +338,16 @@
 }
 
 .paper {
+  /* Fills the viewport's width rather than sitting at a fixed size, so the
+     workspace grows and shrinks with the window. */
   width: 100%;
-  max-width: 780px;
   min-width: 0;
   min-height: 1000px;
   background: var(--paper);
   color: var(--paper-text);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
-  padding: 56px 64px;
+  padding: clamp(28px, 4vw, 72px) clamp(24px, 5vw, 96px);
   display: flex;
   flex-direction: column;
   gap: 24px;
@@ -372,9 +373,9 @@
 
 .page-add-row {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
   width: 100%;
-  max-width: 780px;
 }
 
 /* --- Rendered (real pdflatex compile) view --- */
@@ -970,6 +971,103 @@
   color: #b45309;
 }
 
+/* Proof blocks — same frame as a list. The rows are one grid: start
+   expression | relation | expression | reason | delete. Sharing columns is
+   what makes every relation, and every reason, line up down the proof. */
+.block-proof {
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 12px 10px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(96, 165, 250, 0.04));
+}
+
+.proof-rows {
+  display: grid;
+  /* fit-content caps the start column, so a long starting expression wraps
+     instead of squeezing every step's expression column down to nothing. */
+  /* The reason column flexes too (at half the expression's share) — a fixed
+     width would be handed out first and leave narrow windows with almost no
+     room for the expressions. */
+  grid-template-columns: fit-content(30%) max-content minmax(0, 2fr) minmax(100px, 1fr) auto;
+  /* Top-aligned, so once an expression wraps onto several lines its relation
+     and reason stay level with its first line. */
+  align-items: start;
+  gap: 8px 10px;
+  padding-left: 4px;
+}
+
+.proof-cell {
+  min-width: 0;
+}
+.proof-cell > .math-slot {
+  min-width: 48px;
+}
+/* Wrap long expressions between words (spaces) rather than mid-command —
+   text cells elsewhere break anywhere, which would split "\lor" into "\l"
+   and "or". overflow-wrap still breaks a single over-long token if it must. */
+.proof-cell .text-cell-wrap {
+  word-break: normal;
+  overflow-wrap: anywhere;
+}
+
+/* The start column is empty on every row but the first; right-aligned so
+   the expression sits snug against the first relation, as in the PDF. */
+.proof-start {
+  display: flex;
+  justify-content: flex-end;
+  min-width: 0;
+}
+
+.proof-relation {
+  font-size: 15px;
+  text-align: center;
+}
+
+.proof-reason {
+  font: inherit;
+  font-size: 13px;
+  font-style: italic;
+  color: var(--paper-text);
+  background: rgba(139, 92, 246, 0.05);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 8px;
+  padding: 4px 8px;
+  min-width: 0;
+  outline: none;
+}
+.proof-reason:focus {
+  border-color: var(--purple-strong);
+}
+
+.proof-add-step {
+  margin: 10px 0 0 4px;
+}
+
+.proof-preview {
+  margin-top: 10px;
+  /* align* rows never wrap (in KaTeX or in the PDF), so a long line scrolls
+     here rather than being clipped by .block-math-preview's overflow. */
+  overflow-x: auto;
+}
+/* .block-math-preview lets KaTeX output wrap like prose, which is right for
+   a single equation but scatters an align*'s columns — keep each row whole,
+   and let the output be wider than the block so it scrolls instead. Doubled
+   class for specificity: these rules sit above .block-math-preview's own. */
+.block-math-preview.proof-preview .katex,
+.block-math-preview.proof-preview .base {
+  white-space: nowrap;
+}
+.block-math-preview.proof-preview > * {
+  max-width: none;
+  flex-shrink: 0;
+}
+/* Centered when it fits; left-anchored when it doesn't, so the start of a
+   wide proof can still be scrolled to (justify-content: center would push
+   it out past the left edge). */
+.block-math-preview.proof-preview {
+  justify-content: safe center;
+}
+
 .block-math {
   border: 1px dashed rgba(139, 92, 246, 0.25);
   border-radius: var(--radius-md);
@@ -1158,9 +1256,12 @@
   .list-item-actions,
   .list-add-item,
   .list-item-empty,
-  .list-empty {
+  .list-empty,
+  .proof-rows,
+  .proof-add-step {
     display: none !important;
   }
+  .block-proof,
   .block-list {
     border: none !important;
     background: none !important;

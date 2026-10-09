@@ -21,6 +21,10 @@ export default function Sidebar(): JSX.Element {
   const addHeadingBlock = useDocStore((s) => s.addHeadingBlock)
   const title = useDocStore((s) => s.doc.title)
   const setTitle = useDocStore((s) => s.setTitle)
+  const subtitle = useDocStore((s) => s.doc.subtitle ?? '')
+  const setSubtitle = useDocStore((s) => s.setSubtitle)
+  const titleOffset = useDocStore((s) => s.doc.titleOffsetCm ?? 0)
+  const setTitleOffset = useDocStore((s) => s.setTitleOffset)
 
   const search = query.trim().toLowerCase()
 
@@ -84,6 +88,30 @@ export default function Sidebar(): JSX.Element {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Untitled Document"
+            />
+          </label>
+          <label className="sidebar-field">
+            <span className="sidebar-field-label">Subtitle</span>
+            <input
+              className="sidebar-field-input"
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="Optional"
+            />
+          </label>
+          <label className="sidebar-field">
+            <span className="sidebar-field-label">Space above title (cm, negative moves it up)</span>
+            <input
+              className="sidebar-field-input"
+              type="number"
+              step={0.5}
+              value={titleOffset}
+              // An emptied or half-typed field ("-") reads as NaN; keep the
+              // last valid value rather than emitting \vspace{NaNcm}.
+              onChange={(e) => {
+                const cm = e.target.valueAsNumber
+                if (!Number.isNaN(cm)) setTitleOffset(cm)
+              }}
             />
           </label>
         </SidebarSection>

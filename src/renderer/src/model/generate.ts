@@ -1,5 +1,6 @@
-import type { Align, BigOp, Block, DocState, ListBlock, NodeId, SlotId } from './types'
+import type { Align, BigOp, Block, DocState, ListBlock, NodeId, ProofBlock, SlotId } from './types'
 import { enumerateLabelSpec } from './lists'
+import { escapeProofReason, proofRelationTex } from './proofs'
 
 /**
  * Turns the document model into LaTeX source.
@@ -275,6 +276,34 @@ function listToLatex(doc: DocState, list: ListBlock): string {
   return `\\begin{${env}}${options}\n${items.join('\n')}\n\\end{${env}}`
 }
 
+// --- Proofs ------------------------------------------------------------------
+
+/**
+ * One `align*` row per step. The `&` before each relation is the column every
+ * relation lines up on; the `&&` before a reason starts a further,
+ * left-aligned column, so the reasons line up with each other too. Only the
+ * first row has anything left of its relation — the starting expression.
+ * align* is display math with its own centering, so like a list the proof has
+ * no alignment setting.
+ */
+export function proofToLatex(doc: DocState, proof: ProofBlock): string {
+  const rows = proof.steps.map((step, index) => {
+    const left = index === 0 ? `${slotToLatex(doc, proof.startSlot)} ` : ''
+    const reason = step.reason.trim()
+    const note = reason ? ` && \\text{${escapeProofReason(reason)}}` : ''
+    // align* never breaks a long row by itself. A New Line inside a step's
+    // expression is the manual break: each further segment becomes its own
+    // row, indented past the relation column, with the reason kept on the
+    // step's first row.
+    const [first, ...rest] = splitOnNewlines(doc, step.slot).map((ids) =>
+      ids.map((id) => nodeToLatex(doc, id)).join(' ')
+    )
+    const continuations = rest.map((segment) => ` \\\\\n  &\\quad ${segment}`).join('')
+    return `  ${left}&${proofRelationTex(step.relation)} ${first}${note}${continuations}`
+  })
+  return `\\begin{align*}\n${rows.join(' \\\\\n')}\n\\end{align*}`
+}
+
 // --- Whole document ----------------------------------------------------------
 
 /**
@@ -304,7 +333,25 @@ function blockToLatex(doc: DocState, block: Block, inList = false): string {
       return wrap(mathBlockToLatex(doc, block.rootSlot, block.display, inList ? 'left' : block.align), block.align)
     case 'list':
       return listToLatex(doc, block)
+    case 'proof':
+      return proofToLatex(doc, block)
   }
+}
+
+/**
+ * The \title argument, with the optional top offset and subtitle folded in.
+ * \maketitle sets the title inside a centered tabular, so a \vspace at its
+ * start shifts the whole title block (negative moves it up), and a \\ starts
+ * the subtitle on its own line beneath it. Done here rather than with the
+ * titling package's \droptitle, which isn't part of every TeX install.
+ */
+function titleArgument(doc: DocState): string {
+  const offset = doc.titleOffsetCm ?? 0
+  const subtitle = doc.subtitle?.trim()
+  let out = doc.title || 'Untitled Document'
+  if (offset !== 0) out = `\\vspace{${offset}cm}${out}`
+  if (subtitle) out += `\\\\[0.4em]\\large ${subtitle}`
+  return out
 }
 
 const PREAMBLE_PACKAGES = ['amsmath', 'amssymb', 'amsfonts', 'seqsplit', 'enumerate']
@@ -322,7 +369,7 @@ export function documentToLatex(doc: DocState): string {
     '\\documentclass{article}',
     ...PREAMBLE_PACKAGES.map((pkg) => `\\usepackage{${pkg}}`),
     '',
-    `\\title{${doc.title || 'Untitled Document'}}`,
+    `\\title{${titleArgument(doc)}}`,
     // An empty \date suppresses the automatic "today" that \maketitle would
     // otherwise print under the title.
     '\\date{}',

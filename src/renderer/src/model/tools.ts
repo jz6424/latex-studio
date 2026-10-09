@@ -201,6 +201,10 @@ const styleFns = commandTools(
   (cmd) => STYLE_FN_LABELS[cmd]
 )
 
+// LaTeX's opening double quote is two backticks, not a straight ". It's wrapped
+// in \text because in math mode `` renders as two literal backticks.
+const quotes = symbolTools('Text Styles', [['“ Open Quote', '\\text{``}']])
+
 export const TOOL_CATEGORIES: ToolCategory[] = [
   { name: 'Structure', tools: structure },
   { name: 'Big Operators', tools: bigops },
@@ -208,7 +212,7 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { name: 'Brackets & Matrices', tools: brackets },
   { name: 'Operators & Relations', tools: relations },
   { name: 'Logic', tools: logic },
-  { name: 'Text Styles', tools: [...textSizes, ...styleFns] },
+  { name: 'Text Styles', tools: [...textSizes, ...styleFns, ...quotes] },
   { name: 'Greek Letters', tools: greek },
   { name: 'Functions', tools: functions }
 ]

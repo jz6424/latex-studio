@@ -11,6 +11,7 @@ export default function Page(): JSX.Element {
   const addTextBlock = useDocStore((s) => s.addTextBlock)
   const addMathBlock = useDocStore((s) => s.addMathBlock)
   const addListBlock = useDocStore((s) => s.addListBlock)
+  const addProofBlock = useDocStore((s) => s.addProofBlock)
 
   const pageEndDropData: DropData = { origin: 'page' }
   const pageEnd = useDroppable({ id: PAGE_END_DROP_ID, data: pageEndDropData })
@@ -40,6 +41,9 @@ export default function Page(): JSX.Element {
         </button>
         <button type="button" className="btn" onClick={() => addListBlock()}>
           + List
+        </button>
+        <button type="button" className="btn" onClick={() => addProofBlock()}>
+          + Proof
         </button>
       </div>
     </div>

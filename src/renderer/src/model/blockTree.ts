@@ -1,5 +1,5 @@
 import { nanoid } from 'nanoid'
-import type { Block, BlockId, DocState, ListBlock, ListItem, ListItemId } from './types'
+import type { Block, BlockId, DocState, ListBlock, ListItem, ListItemId, SlotId } from './types'
 import { cloneSlot, deleteNodeDeep } from './factory'
 import { MAX_LIST_DEPTH } from './lists'
 
@@ -178,14 +178,20 @@ export function removeBlock(draft: DocState, blockId: BlockId): void {
 export function deleteBlockDeep(draft: DocState, blockId: BlockId): void {
   const block = draft.blocksById[blockId]
   if (!block) return
-  if (block.type === 'math') {
-    for (const id of draft.slots[block.rootSlot] ?? []) deleteNodeDeep(draft, id)
-    delete draft.slots[block.rootSlot]
-  }
+  if (block.type === 'math') deleteSlotDeep(draft, block.rootSlot)
   if (block.type === 'list') {
     for (const item of block.items) for (const childId of item.blocks) deleteBlockDeep(draft, childId)
   }
+  if (block.type === 'proof') {
+    for (const slotId of [block.startSlot, ...block.steps.map((step) => step.slot)]) deleteSlotDeep(draft, slotId)
+  }
   delete draft.blocksById[blockId]
+}
+
+/** Deletes a slot and every node beneath it. */
+export function deleteSlotDeep(draft: DocState, slotId: SlotId): void {
+  for (const id of draft.slots[slotId] ?? []) deleteNodeDeep(draft, id)
+  delete draft.slots[slotId]
 }
 
 /** Deep-copies a block under fresh ids and registers it, without placing it.
@@ -209,6 +215,14 @@ export function cloneBlockDeep(draft: DocState, sourceId: BlockId): BlockId | nu
           id: nanoid(8),
           blocks: item.blocks.map((childId) => cloneBlockDeep(draft, childId)).filter((c): c is BlockId => c !== null)
         }))
+      }
+      break
+    case 'proof':
+      draft.blocksById[id] = {
+        ...source,
+        id,
+        startSlot: cloneSlot(draft, source.startSlot),
+        steps: source.steps.map((step) => ({ ...step, id: nanoid(8), slot: cloneSlot(draft, step.slot) }))
       }
       break
     default:

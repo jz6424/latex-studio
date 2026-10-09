@@ -1,6 +1,6 @@
 import { useDocStore } from '../model/store'
 import type { Block, DocState } from '../model/types'
-import { slotToLatex } from '../model/generate'
+import { proofToLatex, slotToLatex } from '../model/generate'
 import { bulletLevelOfList } from '../model/blockTree'
 import { listItemLabel } from '../model/lists'
 import KatexView from './KatexView'
@@ -10,7 +10,8 @@ import KatexView from './KatexView'
 export default function BlockPreview({ block }: { block: Block }): JSX.Element {
   const doc = useDocStore((s) => s.doc)
   // Lists have no alignment of their own; their preview reads left to right.
-  const align = block.type === 'list' ? 'left' : block.align
+  // A proof's align* centers itself.
+  const align = block.type === 'list' ? 'left' : block.type === 'proof' ? 'center' : block.align
   return <div className={`block-drag-preview align-${align}`}>{blockContent(block, doc)}</div>
 }
 
@@ -26,6 +27,8 @@ function blockContent(block: Block, doc: DocState): JSX.Element {
       return <KatexView latex={block.source} display={block.display} />
     case 'math':
       return <KatexView latex={slotToLatex(doc, block.rootSlot)} display={block.display} />
+    case 'proof':
+      return <KatexView latex={proofToLatex(doc, block)} display />
     case 'list': {
       const bulletLevel = bulletLevelOfList(doc, block.id)
       if (block.items.length === 0) return <div className="block-drag-preview-text">Empty list</div>
