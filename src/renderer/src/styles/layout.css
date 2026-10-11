@@ -1068,6 +1068,186 @@
   justify-content: safe center;
 }
 
+/* Circuit blocks — same frame as lists and proofs, around a grid canvas
+   that scrolls sideways when the circuit is wider than the page. */
+.block-circuit {
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 12px 10px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(96, 165, 250, 0.04));
+}
+
+.circuit-palette {
+  flex-wrap: wrap;
+}
+
+/* touch-action: none so a drag from the palette isn't taken as a scroll. */
+.circuit-palette-btn {
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.circuit-canvas-scroll {
+  overflow-x: auto;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(139, 92, 246, 0.18);
+  background: #ffffff;
+}
+
+.circuit-canvas {
+  display: block;
+  min-width: 100%;
+  outline: none;
+  touch-action: none;
+  user-select: none;
+}
+.circuit-canvas:focus-visible {
+  box-shadow: inset 0 0 0 2px rgba(139, 92, 246, 0.35);
+}
+
+.circuit-grid-dot {
+  fill: rgba(36, 27, 59, 0.18);
+}
+
+.circuit-gate-hit {
+  fill: transparent;
+  cursor: move;
+}
+
+.circuit-gate-body {
+  fill: #ffffff;
+  stroke: var(--paper-text);
+  stroke-width: 1.6;
+  cursor: move;
+}
+
+.circuit-pin {
+  fill: var(--paper-text);
+  cursor: move;
+}
+
+.circuit-selected .circuit-gate-body,
+.circuit-wire.circuit-selected {
+  stroke: var(--purple-strong);
+  stroke-width: 2.4;
+}
+.circuit-selected .circuit-pin {
+  fill: var(--purple-strong);
+}
+
+.circuit-pin-label {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  color: var(--paper-text);
+  font-size: 15px;
+  white-space: nowrap;
+}
+.circuit-pin-label-input {
+  justify-content: flex-end;
+}
+
+/* Connection dots: faint until hovered, so a finished circuit reads as a
+   diagram rather than a field of handles. */
+.circuit-port {
+  fill: rgba(139, 92, 246, 0.12);
+  stroke: rgba(139, 92, 246, 0.55);
+  stroke-width: 1.2;
+  cursor: crosshair;
+}
+.circuit-port:hover,
+.circuit-port-target {
+  fill: rgba(139, 92, 246, 0.55);
+  stroke: var(--purple-strong);
+}
+
+.circuit-wire {
+  fill: none;
+  stroke: var(--paper-text);
+  stroke-width: 1.6;
+  stroke-linejoin: round;
+}
+
+.circuit-wire-hit {
+  fill: none;
+  stroke: transparent;
+  stroke-width: 10;
+  cursor: pointer;
+}
+
+.circuit-wire-pending {
+  stroke: var(--purple-strong);
+  stroke-width: 1.6;
+  stroke-dasharray: 5 4;
+  pointer-events: none;
+}
+
+.circuit-empty-hint {
+  fill: rgba(36, 27, 59, 0.4);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.circuit-inspector {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  min-height: 34px;
+  margin-top: 8px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--paper-text);
+}
+
+.circuit-inspector-kind {
+  font-weight: 700;
+}
+
+.circuit-inspector-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.circuit-inspector-count {
+  min-width: 14px;
+  text-align: center;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.circuit-name-input {
+  width: 160px;
+  font-style: normal;
+}
+
+.circuit-hint {
+  color: rgba(36, 27, 59, 0.5);
+}
+
+.circuit-delete:hover {
+  background: rgba(236, 72, 153, 0.16);
+  color: #be185d;
+}
+
+/* Follows the pointer while a palette item is dragged. Fixed-position and
+   click-through, so the canvas underneath still gets the drop. */
+.circuit-drag-ghost {
+  position: fixed;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1000;
+  padding: 4px 12px;
+  border-radius: 999px;
+  background: var(--purple-strong);
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 6px 18px rgba(139, 92, 246, 0.35);
+}
+
 .block-math {
   border: 1px dashed rgba(139, 92, 246, 0.25);
   border-radius: var(--radius-md);
@@ -1258,7 +1438,10 @@
   .list-item-empty,
   .list-empty,
   .proof-rows,
-  .proof-add-step {
+  .proof-add-step,
+  .circuit-palette,
+  .circuit-inspector,
+  .circuit-port {
     display: none !important;
   }
   .block-proof,

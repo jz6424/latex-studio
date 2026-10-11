@@ -110,6 +110,7 @@ function ListItemView({
   const addMathBlock = useDocStore((s) => s.addMathBlock)
   const addListBlock = useDocStore((s) => s.addListBlock)
   const addProofBlock = useDocStore((s) => s.addProofBlock)
+  const addCircuitBlock = useDocStore((s) => s.addCircuitBlock)
   const moveListItem = useDocStore((s) => s.moveListItem)
   const removeListItem = useDocStore((s) => s.removeListItem)
 
@@ -136,6 +137,9 @@ function ListItemView({
           </button>
           <button type="button" className="list-btn" onClick={() => addProofBlock(placement)}>
             + Proof
+          </button>
+          <button type="button" className="list-btn" onClick={() => addCircuitBlock(placement)}>
+            + Circuit
           </button>
           {/* Hidden rather than refused on click: past this depth LaTeX
               can't compile the list at all (see MAX_LIST_DEPTH). */}

@@ -12,6 +12,7 @@ export default function Page(): JSX.Element {
   const addMathBlock = useDocStore((s) => s.addMathBlock)
   const addListBlock = useDocStore((s) => s.addListBlock)
   const addProofBlock = useDocStore((s) => s.addProofBlock)
+  const addCircuitBlock = useDocStore((s) => s.addCircuitBlock)
 
   const pageEndDropData: DropData = { origin: 'page' }
   const pageEnd = useDroppable({ id: PAGE_END_DROP_ID, data: pageEndDropData })
@@ -44,6 +45,9 @@ export default function Page(): JSX.Element {
         </button>
         <button type="button" className="btn" onClick={() => addProofBlock()}>
           + Proof
+        </button>
+        <button type="button" className="btn" onClick={() => addCircuitBlock()}>
+          + Circuit
         </button>
       </div>
     </div>

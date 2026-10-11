@@ -12,6 +12,8 @@ import type {
   ListLabelFormat,
   ListNumbering,
   MatrixKind,
+  CircuitWire,
+  GateKind,
   ProofRelation,
   ProofStep,
   NodeId,
@@ -38,6 +40,7 @@ import {
 } from './blockTree'
 import { defaultListStyle } from './lists'
 import { DEFAULT_PROOF_RELATION } from './proofs'
+import { MAX_INPUTS, MIN_INPUTS, VARIABLE_INPUT_KINDS, defaultInputCount, nextTerminalLabel } from './circuits'
 
 /**
  * The single source of truth for the document, as an immer-backed zustand
@@ -100,6 +103,23 @@ interface Store {
   removeProofStep: (proofId: BlockId, stepId: string) => void
   setProofStepRelation: (proofId: BlockId, stepId: string, relation: ProofRelation) => void
   setProofStepReason: (proofId: BlockId, stepId: string, reason: string) => void
+
+  // Circuits
+  addCircuitBlock: (placement?: BlockPlacement) => void
+  /** Adds an element centered at (x, y) grid units and returns its id. Input
+   * and output pins get the next free conventional name (p, q, … / f, g, …). */
+  addCircuitGate: (blockId: BlockId, kind: GateKind, x: number, y: number) => string
+  moveCircuitGate: (blockId: BlockId, gateId: string, x: number, y: number) => void
+  /** Clamped to the kind's allowed range; wires into inputs that no longer
+   * exist are dropped. */
+  setCircuitGateInputs: (blockId: BlockId, gateId: string, inputs: number) => void
+  setCircuitGateLabel: (blockId: BlockId, gateId: string, label: string) => void
+  /** Removes the element and every wire touching it. */
+  removeCircuitGate: (blockId: BlockId, gateId: string) => void
+  /** Wires `from`'s output to input `input` of `to`, replacing whatever
+   * already drove that input. Refuses a gate wired to itself. */
+  connectCircuit: (blockId: BlockId, from: string, to: string, input: number) => void
+  removeCircuitWire: (blockId: BlockId, wireId: string) => void
 
   // Math nodes within a block
   dropToolIntoSlot: (toolId: ToolId, slotId: SlotId, index?: number) => void
@@ -329,6 +349,73 @@ export const useDocStore = create<Store>()(
         if (step) step.reason = reason
       }),
 
+    // --- Circuits ------------------------------------------------------------
+
+    addCircuitBlock: (placement) =>
+      set((s) => {
+        insertBlock(s.doc, { id: nanoid(8), type: 'circuit', gates: [], wires: [], align: 'center' }, placement)
+      }),
+
+    addCircuitGate: (blockId, kind, x, y) => {
+      const id = nanoid(8)
+      set((s) => {
+        const circuit = s.doc.blocksById[blockId]
+        if (circuit?.type !== 'circuit') return
+        const label = kind === 'input' || kind === 'output' ? nextTerminalLabel(circuit, kind) : ''
+        circuit.gates.push({ id, kind, x, y, inputs: defaultInputCount(kind), label })
+      })
+      return id
+    },
+
+    moveCircuitGate: (blockId, gateId, x, y) =>
+      set((s) => {
+        const gate = findCircuitGate(s.doc, blockId, gateId)
+        if (!gate) return
+        gate.x = x
+        gate.y = y
+      }),
+
+    setCircuitGateInputs: (blockId, gateId, inputs) =>
+      set((s) => {
+        const circuit = s.doc.blocksById[blockId]
+        if (circuit?.type !== 'circuit') return
+        const gate = circuit.gates.find((g) => g.id === gateId)
+        if (!gate || !VARIABLE_INPUT_KINDS.includes(gate.kind)) return
+        gate.inputs = Math.min(MAX_INPUTS, Math.max(MIN_INPUTS, inputs))
+        circuit.wires = circuit.wires.filter((w) => w.to !== gateId || w.input < gate.inputs)
+      }),
+
+    setCircuitGateLabel: (blockId, gateId, label) =>
+      set((s) => {
+        const gate = findCircuitGate(s.doc, blockId, gateId)
+        if (gate) gate.label = label
+      }),
+
+    removeCircuitGate: (blockId, gateId) =>
+      set((s) => {
+        const circuit = s.doc.blocksById[blockId]
+        if (circuit?.type !== 'circuit') return
+        circuit.gates = circuit.gates.filter((g) => g.id !== gateId)
+        circuit.wires = circuit.wires.filter((w) => w.from !== gateId && w.to !== gateId)
+      }),
+
+    connectCircuit: (blockId, from, to, input) =>
+      set((s) => {
+        const circuit = s.doc.blocksById[blockId]
+        if (circuit?.type !== 'circuit' || from === to) return
+        const source = circuit.gates.find((g) => g.id === from)
+        const target = circuit.gates.find((g) => g.id === to)
+        if (!source || !target || source.kind === 'output' || input < 0 || input >= target.inputs) return
+        const wire: CircuitWire = { id: nanoid(8), from, to, input }
+        circuit.wires = [...circuit.wires.filter((w) => !(w.to === to && w.input === input)), wire]
+      }),
+
+    removeCircuitWire: (blockId, wireId) =>
+      set((s) => {
+        const circuit = s.doc.blocksById[blockId]
+        if (circuit?.type === 'circuit') circuit.wires = circuit.wires.filter((w) => w.id !== wireId)
+      }),
+
     // --- Math nodes ----------------------------------------------------------
 
     dropToolIntoSlot: (toolId, slotId, index) =>
@@ -416,6 +503,11 @@ function newListItem(doc: DocState): ListItem {
   const text = newTextBlock()
   doc.blocksById[text.id] = text
   return { id: nanoid(8), blocks: [text.id] }
+}
+
+function findCircuitGate(doc: DocState, blockId: BlockId, gateId: string) {
+  const circuit = doc.blocksById[blockId]
+  return circuit?.type === 'circuit' ? circuit.gates.find((g) => g.id === gateId) : undefined
 }
 
 /** A fresh, empty proof line, with its slot registered in the draft. */

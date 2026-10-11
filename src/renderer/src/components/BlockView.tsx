@@ -4,6 +4,7 @@ import RawMathBlockView from './RawMathBlockView'
 import HeadingBlockView from './HeadingBlockView'
 import ListBlockView from './ListBlockView'
 import ProofBlockView from './ProofBlockView'
+import CircuitBlockView from './CircuitBlockView'
 import BlockDragWrapper from './BlockDragWrapper'
 import type { Block } from '../model/types'
 
@@ -23,6 +24,8 @@ export default function BlockView({ block }: { block: Block }): JSX.Element {
       return <ListBlockView block={block} />
     case 'proof':
       return <ProofBlockView block={block} />
+    case 'circuit':
+      return <CircuitBlockView block={block} />
   }
 }
 

@@ -1,6 +1,7 @@
 import type { Align, BigOp, Block, DocState, ListBlock, NodeId, ProofBlock, SlotId } from './types'
 import { enumerateLabelSpec } from './lists'
 import { escapeProofReason, proofRelationTex } from './proofs'
+import { CIRCUIT_PREAMBLE, circuitToLatex } from './circuits'
 
 /**
  * Turns the document model into LaTeX source.
@@ -335,6 +336,12 @@ function blockToLatex(doc: DocState, block: Block, inList = false): string {
       return listToLatex(doc, block)
     case 'proof':
       return proofToLatex(doc, block)
+    case 'circuit': {
+      // An empty circuit emits nothing, rather than an empty alignment
+      // environment around nothing.
+      const picture = circuitToLatex(block)
+      return picture ? wrap(picture, block.align) : ''
+    }
   }
 }
 
@@ -368,6 +375,8 @@ export function documentToLatex(doc: DocState): string {
   return [
     '\\documentclass{article}',
     ...PREAMBLE_PACKAGES.map((pkg) => `\\usepackage{${pkg}}`),
+    // TikZ is slow to load, so it's only pulled in when there's a circuit.
+    ...(Object.values(doc.blocksById).some((b) => b.type === 'circuit') ? CIRCUIT_PREAMBLE : []),
     '',
     `\\title{${titleArgument(doc)}}`,
     // An empty \date suppresses the automatic "today" that \maketitle would

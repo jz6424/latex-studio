@@ -79,6 +79,30 @@ export interface ProofStep {
   reason: string
 }
 
+/** What a circuit element is: a logic gate, or a named input/output pin. */
+export type GateKind = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor' | 'xnor' | 'input' | 'output'
+
+/** One element of a circuit. (x, y) is its center in grid units — see
+ * circuits.ts. `label` names input/output pins (as LaTeX math) and is unused
+ * by gates; `inputs` is how many inputs it has (0 for an input pin). */
+export interface CircuitGate {
+  id: string
+  kind: GateKind
+  x: number
+  y: number
+  inputs: number
+  label: string
+}
+
+/** A wire from one element's output to input number `input` (0 = top) of
+ * another. An input takes at most one wire; an output can feed many. */
+export interface CircuitWire {
+  id: string
+  from: string
+  to: string
+  input: number
+}
+
 export interface ListItem {
   id: ListItemId
   /** The item's content, in order. */
@@ -101,10 +125,14 @@ export type Block =
    * `<relation> <expression>`. Relations line up in one column and reasons in
    * another. Always has at least one step. Like a list, it has no alignment. */
   | { id: BlockId; type: 'proof'; startSlot: SlotId; steps: ProofStep[] }
+  /** A logic-gate diagram, drawn on a grid and output as a TikZ picture. */
+  | { id: BlockId; type: 'circuit'; gates: CircuitGate[]; wires: CircuitWire[]; align: Align }
 
 export type ListBlock = Extract<Block, { type: 'list' }>
 
 export type ProofBlock = Extract<Block, { type: 'proof' }>
+
+export type CircuitBlock = Extract<Block, { type: 'circuit' }>
 
 /** Blocks that carry an alignment — every type except lists and proofs. */
 export type AlignedBlock = Exclude<Block, ListBlock | ProofBlock>

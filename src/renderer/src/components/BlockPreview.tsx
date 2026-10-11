@@ -27,6 +27,12 @@ function blockContent(block: Block, doc: DocState): JSX.Element {
       return <KatexView latex={block.source} display={block.display} />
     case 'math':
       return <KatexView latex={slotToLatex(doc, block.rootSlot)} display={block.display} />
+    case 'circuit':
+      return (
+        <div className="block-drag-preview-text">
+          Logic circuit · {block.gates.length} {block.gates.length === 1 ? 'element' : 'elements'}
+        </div>
+      )
     case 'proof':
       return <KatexView latex={proofToLatex(doc, block)} display />
     case 'list': {
