@@ -40,7 +40,13 @@ import {
 } from './blockTree'
 import { defaultListStyle } from './lists'
 import { DEFAULT_PROOF_RELATION } from './proofs'
-import { MAX_INPUTS, MIN_INPUTS, VARIABLE_INPUT_KINDS, defaultInputCount, nextTerminalLabel } from './circuits'
+import {
+  PLACEHOLDER_DEFAULT_LABEL,
+  defaultInputCount,
+  inputRange,
+  isPlaceholder,
+  nextTerminalLabel
+} from './circuits'
 
 /**
  * The single source of truth for the document, as an immer-backed zustand
@@ -107,7 +113,8 @@ interface Store {
   // Circuits
   addCircuitBlock: (placement?: BlockPlacement) => void
   /** Adds an element centered at (x, y) grid units and returns its id. Input
-   * and output pins get the next free conventional name (p, q, … / f, g, …). */
+   * and output pins get the next free conventional name (p, q, … / f, g, …);
+   * placeholder shapes start out labelled "?". */
   addCircuitGate: (blockId: BlockId, kind: GateKind, x: number, y: number) => string
   moveCircuitGate: (blockId: BlockId, gateId: string, x: number, y: number) => void
   /** Clamped to the kind's allowed range; wires into inputs that no longer
@@ -361,7 +368,12 @@ export const useDocStore = create<Store>()(
       set((s) => {
         const circuit = s.doc.blocksById[blockId]
         if (circuit?.type !== 'circuit') return
-        const label = kind === 'input' || kind === 'output' ? nextTerminalLabel(circuit, kind) : ''
+        const label =
+          kind === 'input' || kind === 'output'
+            ? nextTerminalLabel(circuit, kind)
+            : isPlaceholder(kind)
+              ? PLACEHOLDER_DEFAULT_LABEL
+              : ''
         circuit.gates.push({ id, kind, x, y, inputs: defaultInputCount(kind), label })
       })
       return id
@@ -380,8 +392,9 @@ export const useDocStore = create<Store>()(
         const circuit = s.doc.blocksById[blockId]
         if (circuit?.type !== 'circuit') return
         const gate = circuit.gates.find((g) => g.id === gateId)
-        if (!gate || !VARIABLE_INPUT_KINDS.includes(gate.kind)) return
-        gate.inputs = Math.min(MAX_INPUTS, Math.max(MIN_INPUTS, inputs))
+        const range = gate && inputRange(gate.kind)
+        if (!gate || !range) return
+        gate.inputs = Math.min(range.max, Math.max(range.min, inputs))
         circuit.wires = circuit.wires.filter((w) => w.to !== gateId || w.input < gate.inputs)
       }),
 

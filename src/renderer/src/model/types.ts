@@ -79,12 +79,27 @@ export interface ProofStep {
   reason: string
 }
 
-/** What a circuit element is: a logic gate, or a named input/output pin. */
-export type GateKind = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor' | 'xnor' | 'input' | 'output'
+/** What a circuit element is: a logic gate, a named input/output pin, or a
+ * placeholder shape standing in for an unknown ("mystery") gate. */
+export type GateKind =
+  | 'and'
+  | 'or'
+  | 'not'
+  | 'nand'
+  | 'nor'
+  | 'xor'
+  | 'xnor'
+  | 'input'
+  | 'output'
+  | 'diamond'
+  | 'box'
+  | 'circle'
+  | 'hexagon'
 
 /** One element of a circuit. (x, y) is its center in grid units — see
- * circuits.ts. `label` names input/output pins (as LaTeX math) and is unused
- * by gates; `inputs` is how many inputs it has (0 for an input pin). */
+ * circuits.ts. `label` is LaTeX math: a pin's name, or the text inside a
+ * placeholder shape; logic gates ignore it. `inputs` is how many inputs it
+ * has (0 for an input pin). */
 export interface CircuitGate {
   id: string
   kind: GateKind

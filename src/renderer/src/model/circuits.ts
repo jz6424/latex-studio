@@ -16,11 +16,29 @@ import type { CircuitBlock, CircuitGate, GateKind } from './types'
 
 export const UNIT_PX = 20
 
-/** Gates whose input count can change. XOR/XNOR are fixed at two: TikZ's US
- * xor shape quietly ignores `inputs=` and only ever has two. */
-export const VARIABLE_INPUT_KINDS: GateKind[] = ['and', 'or', 'nand', 'nor']
-export const MIN_INPUTS = 2
+/** Shapes that stand in for an unknown gate — drawn by us rather than by
+ * TikZ's circuit library, so they can have any number of inputs. */
+export const PLACEHOLDER_KINDS: GateKind[] = ['diamond', 'box', 'circle', 'hexagon']
+
+export function isPlaceholder(kind: GateKind): boolean {
+  return PLACEHOLDER_KINDS.includes(kind)
+}
+
+/** Kinds that carry a LaTeX label: pin names and placeholder text. */
+export function hasLabel(kind: GateKind): boolean {
+  return kind === 'input' || kind === 'output' || isPlaceholder(kind)
+}
+
 export const MAX_INPUTS = 4
+
+/** How many inputs a kind may have, or null if it's fixed. XOR/XNOR are
+ * fixed at two: TikZ's US xor shape quietly ignores `inputs=` and only ever
+ * has two. A placeholder can have as few as one. */
+export function inputRange(kind: GateKind): { min: number; max: number } | null {
+  if (kind === 'and' || kind === 'or' || kind === 'nand' || kind === 'nor') return { min: 2, max: MAX_INPUTS }
+  if (isPlaceholder(kind)) return { min: 1, max: MAX_INPUTS }
+  return null
+}
 
 export const GATE_KINDS: { kind: GateKind; label: string }[] = [
   { kind: 'input', label: 'Input' },
@@ -31,8 +49,15 @@ export const GATE_KINDS: { kind: GateKind; label: string }[] = [
   { kind: 'nand', label: 'NAND' },
   { kind: 'nor', label: 'NOR' },
   { kind: 'xor', label: 'XOR' },
-  { kind: 'xnor', label: 'XNOR' }
+  { kind: 'xnor', label: 'XNOR' },
+  { kind: 'diamond', label: '\u25c7 Diamond' },
+  { kind: 'box', label: '\u25a1 Box' },
+  { kind: 'circle', label: '\u25cb Circle' },
+  { kind: 'hexagon', label: '\u2b21 Hexagon' }
 ]
+
+/** The text a new placeholder starts with. */
+export const PLACEHOLDER_DEFAULT_LABEL = '?'
 
 export function gateKindLabel(kind: GateKind): string {
   return GATE_KINDS.find((g) => g.kind === kind)?.label ?? kind
@@ -83,7 +108,7 @@ function orBackX(w: number, h: number, y: number): number {
   return w - (OR_BACK_CURVE * y * y) / h
 }
 
-type Family = 'and' | 'or' | 'xor' | 'not' | 'terminal'
+type Family = 'and' | 'or' | 'xor' | 'not' | 'terminal' | 'placeholder'
 
 function family(kind: GateKind): Family {
   switch (kind) {
@@ -98,8 +123,11 @@ function family(kind: GateKind): Family {
       return 'xor'
     case 'not':
       return 'not'
-    default:
+    case 'input':
+    case 'output':
       return 'terminal'
+    default:
+      return 'placeholder'
   }
 }
 
@@ -107,8 +135,72 @@ function isInverting(kind: GateKind): boolean {
   return kind === 'nand' || kind === 'nor' || kind === 'xnor' || kind === 'not'
 }
 
+/** Half-width `a` and half-height `h` of a placeholder shape. Tall enough
+ * that every input (one unit apart) meets its left edge; the pointed shapes
+ * are a unit wider so their inputs don't crowd the tips. */
+function placeholderSize(gate: CircuitGate): { a: number; h: number } {
+  const h = Math.max(1, gate.inputs / 2 + 0.5)
+  switch (gate.kind) {
+    case 'box':
+      return { a: 1.5, h }
+    case 'circle':
+      return { a: h, h }
+    default:
+      return { a: h + 0.5, h }
+  }
+}
+
+/** Where a placeholder's left edge is at height y (|y| < h). */
+function placeholderLeftX(gate: CircuitGate, y: number): number {
+  const { a, h } = placeholderSize(gate)
+  switch (gate.kind) {
+    case 'box':
+      return -a
+    case 'circle':
+      return -Math.sqrt(Math.max(0, a * a - y * y))
+    case 'diamond':
+      return -a * (1 - Math.abs(y) / h)
+    default:
+      // Hexagon with points left and right, its slanted sides meeting the
+      // top and bottom edges halfway in.
+      return -a + (a / 2) * (Math.abs(y) / h)
+  }
+}
+
+/** The outline's corners (for polygons) in grid units, relative to center. */
+function placeholderPolygon(gate: CircuitGate): { x: number; y: number }[] | null {
+  const { a, h } = placeholderSize(gate)
+  switch (gate.kind) {
+    case 'box':
+      return [
+        { x: -a, y: -h },
+        { x: a, y: -h },
+        { x: a, y: h },
+        { x: -a, y: h }
+      ]
+    case 'diamond':
+      return [
+        { x: -a, y: 0 },
+        { x: 0, y: -h },
+        { x: a, y: 0 },
+        { x: 0, y: h }
+      ]
+    case 'hexagon':
+      return [
+        { x: -a, y: 0 },
+        { x: -a / 2, y: -h },
+        { x: a / 2, y: -h },
+        { x: a, y: 0 },
+        { x: a / 2, y: h },
+        { x: -a / 2, y: h }
+      ]
+    default:
+      return null
+  }
+}
+
 function bodyMetrics(gate: CircuitGate): BodyMetrics {
-  const n = Math.min(MAX_INPUTS, Math.max(MIN_INPUTS, gate.inputs))
+  const n = Math.min(MAX_INPUTS, Math.max(2, gate.inputs))
   switch (family(gate.kind)) {
     case 'and':
       return AND_BODY[n]
@@ -120,6 +212,10 @@ function bodyMetrics(gate: CircuitGate): BodyMetrics {
       return NOT_BODY
     case 'terminal':
       return { w: 0, e: 0, h: 0.5 }
+    case 'placeholder': {
+      const { a, h } = placeholderSize(gate)
+      return { w: -a, e: a, h }
+    }
   }
 }
 
@@ -138,6 +234,8 @@ export function inputOffset(gate: CircuitGate, index: number): { x: number; y: n
   const y = index - (gate.inputs - 1) / 2
   const { w, h } = bodyMetrics(gate)
   switch (family(gate.kind)) {
+    case 'placeholder':
+      return { x: placeholderLeftX(gate, y), y }
     case 'or':
       return { x: orBackX(w, h, y), y }
     case 'xor':
@@ -178,6 +276,12 @@ export function gateOutlinePath(gate: CircuitGate): string {
       return `M ${p(w, -h)} L ${p(e, 0)} L ${p(w, h)} Z`
     case 'terminal':
       return ''
+    case 'placeholder': {
+      const corners = placeholderPolygon(gate)
+      if (corners) return `M ${corners.map((c) => p(c.x, c.y)).join(' L ')} Z`
+      const r = h * UNIT_PX
+      return `M ${p(-h, 0)} A ${r} ${r} 0 1 1 ${p(h, 0)} A ${r} ${r} 0 1 1 ${p(-h, 0)} Z`
+    }
   }
 }
 
@@ -231,14 +335,34 @@ function inputsSpec(count: number): string {
   return 'n'.repeat(count)
 }
 
-function inputAnchor(gate: CircuitGate, index: number): string {
-  if (gate.kind === 'output') return 'center'
-  if (gate.kind === 'not') return 'input'
-  return `input ${index + 1}`
+/** A TikZ point for a wire end. Library gates and pins are referred to by
+ * anchor; placeholders are drawn as plain paths with no anchors, so their
+ * ports are given as coordinates, computed the same way as on screen. */
+function inputPoint(gate: CircuitGate, name: string, index: number): string {
+  if (isPlaceholder(gate.kind)) return absolute(gate, inputOffset(gate, index))
+  if (gate.kind === 'output') return `(${name}.center)`
+  if (gate.kind === 'not') return `(${name}.input)`
+  return `(${name}.input ${index + 1})`
 }
 
-function outputAnchor(gate: CircuitGate): string {
-  return gate.kind === 'input' ? 'center' : 'output'
+function outputPoint(gate: CircuitGate, name: string): string {
+  if (isPlaceholder(gate.kind)) return absolute(gate, outputOffset(gate))
+  return gate.kind === 'input' ? `(${name}.center)` : `(${name}.output)`
+}
+
+function absolute(gate: CircuitGate, offset: { x: number; y: number }): string {
+  return `(${fmt(gate.x + offset.x)}, ${fmt(gate.y + offset.y)})`
+}
+
+/** A placeholder: its outline as a closed path, and its label centered. */
+function placeholderToLatex(gate: CircuitGate): string {
+  const corners = placeholderPolygon(gate)
+  const outline = corners
+    ? `${corners.map((c) => absolute(gate, c)).join(' -- ')} -- cycle`
+    : `(${fmt(gate.x)}, ${fmt(gate.y)}) circle[radius=${fmt(placeholderSize(gate).h)}]`
+  const label = gate.label.trim()
+  const text = label ? `\n  \\node at (${fmt(gate.x)}, ${fmt(gate.y)}) {$${label}$};` : ''
+  return `  \\draw ${outline};${text}`
 }
 
 /**
@@ -255,6 +379,7 @@ export function circuitToLatex(circuit: CircuitBlock): string {
   const nodes = circuit.gates.map((gate) => {
     const name = names.get(gate.id)
     const at = `(${fmt(gate.x)}, ${fmt(gate.y)})`
+    if (isPlaceholder(gate.kind)) return placeholderToLatex(gate)
     if (gate.kind === 'input' || gate.kind === 'output') {
       const side = gate.kind === 'input' ? 'left' : 'right'
       const label = gate.label.trim() ? `, label=${side}:{$${gate.label.trim()}$}` : ''
@@ -270,8 +395,8 @@ export function circuitToLatex(circuit: CircuitBlock): string {
     const to = byId.get(wire.to)
     if (!from || !to) return []
     return [
-      `  \\coordinate (a) at (${names.get(from.id)}.${outputAnchor(from)});` +
-        ` \\coordinate (b) at (${names.get(to.id)}.${inputAnchor(to, wire.input)});` +
+      `  \\coordinate (a) at ${outputPoint(from, names.get(from.id) ?? '')};` +
+        ` \\coordinate (b) at ${inputPoint(to, names.get(to.id) ?? '', wire.input)};` +
         ' \\draw (a) -| ($(a)!0.5!(b)$) |- (b);'
     ]
   })

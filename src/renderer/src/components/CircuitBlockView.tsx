@@ -2,16 +2,16 @@ import { useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } f
 import { useDocStore } from '../model/store'
 import {
   GATE_KINDS,
-  MAX_INPUTS,
-  MIN_INPUTS,
   UNIT_PX,
-  VARIABLE_INPUT_KINDS,
   bubble,
   defaultInputCount,
   gateExtent,
   gateKindLabel,
   gateOutlinePath,
+  hasLabel,
   hasOutput,
+  inputRange,
+  isPlaceholder,
   inputOffset,
   outputOffset,
   wireRoute
@@ -28,6 +28,13 @@ type Selection = { type: 'gate'; id: string } | { type: 'wire'; id: string } | n
 interface Point {
   x: number
   y: number
+}
+
+interface PaletteDrag {
+  kind: GateKind
+  start: Point
+  client: Point
+  moved: boolean
 }
 
 /** How close (in grid units) the pointer must be to a port to connect to it. */
@@ -70,12 +77,14 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
   // so a drag is one edit rather than one per pointer move.
   const [moving, setMoving] = useState<{ gateId: string; offset: Point; at: Point } | null>(null)
   const [wiring, setWiring] = useState<{ from: PortRef; pointer: Point } | null>(null)
-  const [paletteDrag, setPaletteDrag] = useState<{
-    kind: GateKind
-    start: Point
-    client: Point
-    moved: boolean
-  } | null>(null)
+  const [paletteDrag, setPaletteDragState] = useState<PaletteDrag | null>(null)
+  // Mirrored in a ref, set synchronously: a quick click can release before
+  // React has re-rendered with the press, and the release must still see it.
+  const paletteDragRef = useRef<PaletteDrag | null>(null)
+  function setPaletteDrag(drag: PaletteDrag | null): void {
+    paletteDragRef.current = drag
+    setPaletteDragState(drag)
+  }
 
   const gates = block.gates.map((g) => (moving?.gateId === g.id ? { ...g, x: moving.at.x, y: moving.at.y } : g))
   const gatesById = new Map(gates.map((g) => [g.id, g]))
@@ -123,12 +132,21 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
   }
 
   /** Somewhere visible and unoccupied for a gate added by click: pins in
-   * columns at the left and right, gates in between, stacked downward. */
+   * columns at the left and right, gates in between, stacked downward. Reads
+   * the store rather than this render's props, so several quick clicks in a
+   * row each see the gates the previous ones added. */
   function freeSpot(kind: GateKind): Point {
-    const rightmost = Math.max(0, ...gates.map((g) => g.x + gateExtent(g).right))
+    const current = store().doc.blocksById[block.id]
+    const existing = current?.type === 'circuit' ? current.gates : gates
+    const extent = gateExtent({ id: '', kind, x: 0, y: 0, inputs: defaultInputCount(kind), label: '' })
+    const rightmost = Math.max(0, ...existing.map((g) => g.x + gateExtent(g).right))
     const x = kind === 'input' ? 2 : kind === 'output' ? Math.max(22, snap(rightmost + 3)) : 9
-    for (let y = 2; ; y += 3) {
-      const clash = gates.some((g) => Math.abs(g.x - x) < 5 && Math.abs(g.y - y) < 2.5)
+    for (let y = snap(extent.half + 1); ; y += 0.5) {
+      const clash = existing.some((g) => {
+        const other = gateExtent(g)
+        const overlapX = x - extent.left < g.x + other.right && g.x - other.left < x + extent.right
+        return overlapX && Math.abs(g.y - y) < other.half + extent.half + 0.5
+      })
       if (!clash) return { x, y }
     }
   }
@@ -149,8 +167,9 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
   }
 
   function finishPaletteDrag(e: PointerEvent): void {
-    if (!paletteDrag) return
-    const { kind, moved } = paletteDrag
+    const drag = paletteDragRef.current
+    if (!drag) return
+    const { kind, moved } = drag
     setPaletteDrag(null)
     if (!moved) {
       addGate(kind, freeSpot(kind))
@@ -181,11 +200,10 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
   }
 
   function onWindowPointerMove(e: PointerEvent): void {
-    if (paletteDrag) {
-      const moved =
-        paletteDrag.moved ||
-        Math.hypot(e.clientX - paletteDrag.start.x, e.clientY - paletteDrag.start.y) > CLICK_SLOP_PX
-      setPaletteDrag({ ...paletteDrag, client: { x: e.clientX, y: e.clientY }, moved })
+    const drag = paletteDragRef.current
+    if (drag) {
+      const moved = drag.moved || Math.hypot(e.clientX - drag.start.x, e.clientY - drag.start.y) > CLICK_SLOP_PX
+      setPaletteDrag({ ...drag, client: { x: e.clientX, y: e.clientY }, moved })
       return
     }
     const pointer = toUnits(e.clientX, e.clientY)
@@ -254,6 +272,7 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
   const heightUnits = Math.max(MIN_CANVAS_UNITS.height, ...gates.map((g) => g.y + gateExtent(g).half + 3))
 
   const selectedGate = selected?.type === 'gate' ? gatesById.get(selected.id) : undefined
+  const selectedRange = selectedGate ? inputRange(selectedGate.kind) : null
   const selectedWire = selected?.type === 'wire' ? block.wires.find((w) => w.id === selected.id) : undefined
   const wiringFrom = wiring ? portPoint(wiring.from) : null
   const wiringTarget = wiring ? connectableNear(wiring.from, wiring.pointer) : null
@@ -276,7 +295,11 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
             type="button"
             key={kind}
             className="list-btn circuit-palette-btn"
-            title={`Drag onto the canvas, or click to add a ${label} ${kind === 'input' || kind === 'output' ? 'pin' : 'gate'}`}
+            title={
+              isPlaceholder(kind)
+                ? `Drag onto the canvas, or click to add a ${kind} placeholder for an unknown gate`
+                : `Drag onto the canvas, or click to add a ${label} ${kind === 'input' || kind === 'output' ? 'pin' : 'gate'}`
+            }
             onPointerDown={(e) => onPalettePointerDown(kind, e)}
           >
             {label}
@@ -365,13 +388,13 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
         {selectedGate ? (
           <>
             <span className="circuit-inspector-kind">{gateKindLabel(selectedGate.kind)}</span>
-            {VARIABLE_INPUT_KINDS.includes(selectedGate.kind) && (
+            {selectedRange && (
               <span className="circuit-inspector-field">
                 Inputs
                 <button
                   type="button"
                   className="list-icon-btn"
-                  disabled={selectedGate.inputs <= MIN_INPUTS}
+                  disabled={selectedGate.inputs <= selectedRange.min}
                   onClick={() => store().setCircuitGateInputs(block.id, selectedGate.id, selectedGate.inputs - 1)}
                   aria-label="Fewer inputs"
                 >
@@ -381,7 +404,7 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
                 <button
                   type="button"
                   className="list-icon-btn"
-                  disabled={selectedGate.inputs >= MAX_INPUTS}
+                  disabled={selectedGate.inputs >= selectedRange.max}
                   onClick={() => store().setCircuitGateInputs(block.id, selectedGate.id, selectedGate.inputs + 1)}
                   aria-label="More inputs"
                 >
@@ -389,13 +412,13 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
                 </button>
               </span>
             )}
-            {(selectedGate.kind === 'input' || selectedGate.kind === 'output') && (
+            {hasLabel(selectedGate.kind) && (
               <label className="circuit-inspector-field">
-                Name
+                {isPlaceholder(selectedGate.kind) ? 'Label' : 'Name'}
                 <input
                   className="proof-reason circuit-name-input"
                   value={selectedGate.label}
-                  placeholder="LaTeX, e.g. x_1"
+                  placeholder={isPlaceholder(selectedGate.kind) ? 'LaTeX, e.g. ? or G_1' : 'LaTeX, e.g. x_1'}
                   onChange={(e) => store().setCircuitGateLabel(block.id, selectedGate.id, e.target.value)}
                 />
               </label>
@@ -430,8 +453,9 @@ export default function CircuitBlockView({ block }: { block: CircuitBlock }): JS
   )
 }
 
-/** One gate or pin: its outline, its name (for pins), and its connection
- * dots. Positioned by translating to its center. */
+/** One gate, pin or placeholder: its outline, its label (pins and
+ * placeholders), and its connection dots. Positioned by translating to its
+ * center. */
 function GateView({
   gate,
   selected,
@@ -488,6 +512,19 @@ function GateView({
         <>
           <path d={gateOutlinePath(gate)} className="circuit-gate-body" onPointerDown={onBodyDown} />
           {dot && <circle cx={dot.cx} cy={0} r={dot.r} className="circuit-gate-body" onPointerDown={onBodyDown} />}
+          {isPlaceholder(gate.kind) && (
+            <foreignObject
+              x={-px(extent.left - 0.5)}
+              y={-px(extent.half)}
+              width={px(2 * (extent.left - 0.5))}
+              height={px(2 * extent.half)}
+              pointerEvents="none"
+            >
+              <div className="circuit-placeholder-label">
+                <KatexView latex={gate.label} />
+              </div>
+            </foreignObject>
+          )}
         </>
       )}
 
