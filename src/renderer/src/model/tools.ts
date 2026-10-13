@@ -174,6 +174,17 @@ const functions = commandTools(
   (cmd) => cmd
 )
 
+// Both common notations. No \arcsec/\arccsc/\arccot: they aren't standard
+// LaTeX commands, so pdflatex would reject them even though KaTeX draws them.
+// The ⁻¹ forms are read as the inverse (not a reciprocal) when graphed.
+const inverseTrig = commandTools(
+  'Inverse Trig',
+  'fn',
+  ['\\arcsin', '\\arccos', '\\arctan', '\\sin^{-1}', '\\cos^{-1}', '\\tan^{-1}'],
+  (cmd) => cmd,
+  (cmd) => cmd.replace('\\', '').replace('^{-1}', '\u207b\u00b9')
+)
+
 // Font-size declarations and text-style commands — these ARE valid inline
 // within math/text (unlike \section etc.) and KaTeX supports all of them, so
 // they work as ordinary draggable widgets with a live preview. "Aa" is just
@@ -214,7 +225,8 @@ export const TOOL_CATEGORIES: ToolCategory[] = [
   { name: 'Logic', tools: logic },
   { name: 'Text Styles', tools: [...textSizes, ...styleFns, ...quotes] },
   { name: 'Greek Letters', tools: greek },
-  { name: 'Functions', tools: functions }
+  { name: 'Functions', tools: functions },
+  { name: 'Inverse Trig', tools: inverseTrig }
 ]
 
 /** Flat lookup list, for resolving a dragged tool id back to its definition. */

@@ -86,6 +86,19 @@ const UNARY_FUNCTIONS: Record<string, (v: number) => number> = {
   lg: Math.log10
 }
 
+/** What \sin^{-1} and friends mean: the inverse function, not 1/sin. */
+const INVERSE_FUNCTIONS: Record<string, (v: number) => number> = {
+  sin: Math.asin,
+  cos: Math.acos,
+  tan: Math.atan,
+  sec: (v) => Math.acos(1 / v),
+  csc: (v) => Math.asin(1 / v),
+  cot: (v) => Math.atan(1 / v),
+  sinh: Math.asinh,
+  cosh: Math.acosh,
+  tanh: Math.atanh
+}
+
 const OPERATOR_COMMANDS: Record<string, string> = { cdot: '*', times: '*', div: '/', ast: '*' }
 
 const FRACTION_COMMANDS = new Set(['frac', 'dfrac', 'tfrac'])
@@ -301,8 +314,17 @@ class Parser {
     throw new PlotParseError(`Unsupported "\\${name}"`)
   }
 
-  /** \sin x, \sin(2x), \sin^2 x, \log_2 x. Without parentheses the argument
-   * is the product that follows, as in "\sin 2x" meaning sin(2x). */
+  /** Whether the tokens after a ^ are exactly -1, braced or not. */
+  private exponentIsMinusOne(): boolean {
+    const at = (i: number): Token | undefined => this.tokens[this.pos + i]
+    const sym = (t: Token | undefined, v: string): boolean => t?.kind === 'sym' && t.value === v
+    const one = (t: Token | undefined): boolean => t?.kind === 'num' && t.text === '1'
+    if (sym(at(1), '{')) return sym(at(2), '-') && one(at(3)) && sym(at(4), '}')
+    return sym(at(1), '-') && one(at(2))
+  }
+
+  /** \sin x, \sin(2x), \sin^2 x, \sin^{-1} x, \log_2 x. Without parentheses
+   * the argument is the product that follows, as in "\sin 2x" meaning sin(2x). */
   private functionCall(name: string, fn: (v: number) => number): PlotFn {
     let base: PlotFn | null = null
     let exponent: PlotFn | null = null
@@ -310,6 +332,11 @@ class Parser {
       if (this.isSym('_') && name === 'log' && !base) {
         this.pos++
         base = this.scriptArgument()
+      } else if (this.isSym('^') && !exponent && INVERSE_FUNCTIONS[name] && this.exponentIsMinusOne()) {
+        // sin⁻¹ is arcsin, unlike sin² which really is a power.
+        const braced = this.tokens[this.pos + 1]?.kind === 'sym' && this.tokens[this.pos + 1].value === '{'
+        this.pos += braced ? 5 : 3
+        fn = INVERSE_FUNCTIONS[name]
       } else if (this.isSym('^') && !exponent) {
         this.pos++
         exponent = this.scriptArgument()
