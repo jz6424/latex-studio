@@ -1,7 +1,8 @@
 import type { Align, BigOp, Block, DocState, ListBlock, NodeId, ProofBlock, SlotId } from './types'
 import { enumerateLabelSpec } from './lists'
 import { escapeProofReason, proofRelationTex } from './proofs'
-import { CIRCUIT_PREAMBLE, circuitToLatex } from './circuits'
+import { CIRCUIT_TIKZ_LIBRARIES, circuitToLatex } from './circuits'
+import { plotToLatex } from './plots'
 
 /**
  * Turns the document model into LaTeX source.
@@ -342,6 +343,10 @@ function blockToLatex(doc: DocState, block: Block, inList = false): string {
       const picture = circuitToLatex(block)
       return picture ? wrap(picture, block.align) : ''
     }
+    case 'plot': {
+      const picture = plotToLatex(doc, block)
+      return picture ? wrap(picture, block.align) : ''
+    }
   }
 }
 
@@ -361,6 +366,13 @@ function titleArgument(doc: DocState): string {
   return out
 }
 
+function tikzPreamble(doc: DocState): string[] {
+  const blocks = Object.values(doc.blocksById)
+  const circuits = blocks.some((b) => b.type === 'circuit')
+  if (!circuits && !blocks.some((b) => b.type === 'plot')) return []
+  return ['\\usepackage{tikz}', ...(circuits ? [CIRCUIT_TIKZ_LIBRARIES] : [])]
+}
+
 const PREAMBLE_PACKAGES = ['amsmath', 'amssymb', 'amsfonts', 'seqsplit', 'enumerate']
 
 /** Full standalone .tex document source for the whole page. */
@@ -375,8 +387,8 @@ export function documentToLatex(doc: DocState): string {
   return [
     '\\documentclass{article}',
     ...PREAMBLE_PACKAGES.map((pkg) => `\\usepackage{${pkg}}`),
-    // TikZ is slow to load, so it's only pulled in when there's a circuit.
-    ...(Object.values(doc.blocksById).some((b) => b.type === 'circuit') ? CIRCUIT_PREAMBLE : []),
+    // TikZ is slow to load, so it's only pulled in when something draws.
+    ...tikzPreamble(doc),
     '',
     `\\title{${titleArgument(doc)}}`,
     // An empty \date suppresses the automatic "today" that \maketitle would

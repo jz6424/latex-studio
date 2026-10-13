@@ -1259,6 +1259,219 @@
   box-shadow: 0 6px 18px rgba(139, 92, 246, 0.35);
 }
 
+/* Plot blocks and the plot dialog. The chart is an SVG drawn on paper
+   colours, in the PDF's proportions (see PlotChart). */
+.block-plot {
+  border: 1px dashed rgba(139, 92, 246, 0.25);
+  border-radius: var(--radius-md);
+  padding: 12px 14px 12px 10px;
+  background: linear-gradient(135deg, rgba(167, 139, 250, 0.05), rgba(96, 165, 250, 0.04));
+}
+
+.plot-figure {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 4px;
+}
+.plot-figure.align-left {
+  align-items: flex-start;
+}
+.plot-figure.align-center {
+  align-items: center;
+}
+.plot-figure.align-right {
+  align-items: flex-end;
+}
+.plot-figure .plot-chart {
+  width: min(100%, 480px);
+}
+
+.plot-figure-label {
+  color: var(--paper-text);
+  font-size: 15px;
+  margin-bottom: 2px;
+  align-self: center;
+}
+
+.plot-chart {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #ffffff;
+  border-radius: 8px;
+}
+
+.plot-grid {
+  stroke: rgba(36, 27, 59, 0.09);
+  stroke-width: 1;
+}
+
+.plot-axis {
+  stroke: var(--paper-text);
+  stroke-width: 1.2;
+}
+
+.plot-arrowhead {
+  fill: none;
+  stroke: var(--paper-text);
+  stroke-width: 1.4;
+}
+
+.plot-axis-name {
+  fill: var(--paper-text);
+  font-family: 'Cambria Math', Cambria, 'Latin Modern Math', serif;
+  font-style: italic;
+  font-size: 15px;
+}
+
+.plot-tick {
+  fill: rgba(36, 27, 59, 0.75);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+
+.plot-curve {
+  fill: none;
+  stroke: #1d4ed8;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+/* Covers the page but not the sidebar, so widgets can still be dragged from
+   the sidebar into the function being built. */
+.plot-dialog-overlay {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 280px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(15, 10, 30, 0.55);
+  backdrop-filter: blur(2px);
+  z-index: 20;
+}
+
+.plot-dialog {
+  width: min(640px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  gap: 14px;
+}
+
+.plot-dialog-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.plot-steps {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.plot-steps [data-active] {
+  color: var(--purple);
+}
+
+.plot-dialog-hint {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+
+/* The builder sits on paper colours, like the page, so widgets look the
+   same here as they do in an equation. */
+.plot-builder {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--paper-text);
+  font-size: 16px;
+}
+
+.plot-builder-lhs {
+  flex: 0 0 auto;
+  font-family: 'Cambria Math', Cambria, 'Latin Modern Math', serif;
+  font-style: italic;
+}
+
+.plot-builder-slot {
+  flex: 1;
+  min-height: 38px;
+}
+
+.plot-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  color: var(--paper-text);
+}
+
+/* Sized by height so the whole dialog, buttons included, fits on screen. */
+.plot-preview .plot-chart {
+  width: auto;
+  max-width: 100%;
+  height: min(34vh, 300px);
+  margin: 0 auto;
+}
+
+.plot-preview-formula {
+  min-height: 28px;
+  text-align: center;
+  overflow-x: auto;
+}
+
+.plot-error {
+  font-size: 13px;
+  font-weight: 600;
+  color: #b91c1c;
+  text-align: center;
+}
+
+.plot-window-fields {
+  display: flex;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+.plot-window-name {
+  width: 92px;
+  flex: 0 0 auto;
+  padding-bottom: 9px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.plot-fit-btn {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.plot-checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
 .block-math {
   border: 1px dashed rgba(139, 92, 246, 0.25);
   border-radius: var(--radius-md);

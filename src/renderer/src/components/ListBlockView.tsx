@@ -1,5 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useDocStore } from '../model/store'
+import { usePlotEditor } from '../model/plotEditor'
 import { bulletLevelOfList, listDepthOfBlock } from '../model/blockTree'
 import {
   LIST_STYLE_OPTIONS,
@@ -111,6 +112,8 @@ function ListItemView({
   const addListBlock = useDocStore((s) => s.addListBlock)
   const addProofBlock = useDocStore((s) => s.addProofBlock)
   const addCircuitBlock = useDocStore((s) => s.addCircuitBlock)
+  const addPlotBlock = useDocStore((s) => s.addPlotBlock)
+  const openPlotEditor = usePlotEditor((s) => s.open)
   const moveListItem = useDocStore((s) => s.moveListItem)
   const removeListItem = useDocStore((s) => s.removeListItem)
 
@@ -140,6 +143,16 @@ function ListItemView({
           </button>
           <button type="button" className="list-btn" onClick={() => addCircuitBlock(placement)}>
             + Circuit
+          </button>
+          <button
+            type="button"
+            className="list-btn"
+            onClick={() => {
+              const id = addPlotBlock(placement)
+              if (id) openPlotEditor(id, true)
+            }}
+          >
+            + Plot
           </button>
           {/* Hidden rather than refused on click: past this depth LaTeX
               can't compile the list at all (see MAX_LIST_DEPTH). */}

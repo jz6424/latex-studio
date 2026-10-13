@@ -1,4 +1,21 @@
-import { pointerWithin, type CollisionDetection } from '@dnd-kit/core'
+import { pointerWithin, type Collision, type CollisionDetection } from '@dnd-kit/core'
+
+/** Marks an open dialog that accepts drops (see PlotDialog). */
+export const MODAL_DROP_SCOPE_ATTR = 'data-modal-drop-scope'
+
+/**
+ * Matching is by on-screen rectangles, not by what's visible at the pointer,
+ * so blocks hidden behind a dialog's backdrop would still catch drops. While
+ * a drop-accepting dialog is open, only droppables inside it count.
+ */
+function withinModalScope(args: Parameters<CollisionDetection>[0], matches: Collision[]): Collision[] {
+  const scope = document.querySelector(`[${MODAL_DROP_SCOPE_ATTR}]`)
+  if (!scope) return matches
+  return matches.filter((match) => {
+    const node = args.droppableContainers.find((c) => c.id === match.id)?.node.current
+    return node ? scope.contains(node) : false
+  })
+}
 
 /**
  * Widgets nest droppables inside droppables of the same on-screen size (a
@@ -21,7 +38,7 @@ import { pointerWithin, type CollisionDetection } from '@dnd-kit/core'
  * anything yet.
  */
 export const nestedAwareCollisionDetection: CollisionDetection = (args) => {
-  const pointerMatches = pointerWithin(args)
+  const pointerMatches = withinModalScope(args, pointerWithin(args))
   if (pointerMatches.length === 0) return []
 
   let best = pointerMatches[0]

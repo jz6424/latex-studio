@@ -327,7 +327,7 @@ export function nextTerminalLabel(circuit: CircuitBlock, kind: 'input' | 'output
 
 // --- TikZ ----------------------------------------------------------------------
 
-export const CIRCUIT_PREAMBLE = ['\\usepackage{tikz}', '\\usetikzlibrary{circuits.logic.US,calc}']
+export const CIRCUIT_TIKZ_LIBRARIES = '\\usetikzlibrary{circuits.logic.US,calc}'
 
 const fmt = (n: number): string => String(Math.round(n * 1000) / 1000)
 

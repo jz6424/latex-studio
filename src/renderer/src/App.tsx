@@ -15,6 +15,8 @@ import RenderedPage from './components/RenderedPage'
 import SourcePanel from './components/SourcePanel'
 import DragPreviewOverlay from './components/DragPreviewOverlay'
 import MatrixDimensionsDialog from './components/MatrixDimensionsDialog'
+import PlotDialog from './components/PlotDialog'
+import { usePlotEditor } from './model/plotEditor'
 import HomePage from './components/HomePage'
 import { useDocStore } from './model/store'
 import type { DocState } from './model/types'
@@ -54,6 +56,7 @@ export default function App(): JSX.Element {
   const [pendingMatrix, setPendingMatrix] = useState<PendingMatrixDrop | null>(null)
 
   const doc = useDocStore((s) => s.doc)
+  const plotEditing = usePlotEditor((s) => s.editing)
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: DRAG_ACTIVATION_DISTANCE_PX } })
@@ -178,6 +181,10 @@ export default function App(): JSX.Element {
       </div>
 
       <DragPreviewOverlay dragging={dragging} overDropZone={isOverDropZone} />
+
+      {plotEditing && viewMode === 'widget' && (
+        <PlotDialog key={plotEditing.blockId} blockId={plotEditing.blockId} isNew={plotEditing.isNew} />
+      )}
 
       {pendingMatrix && (
         <MatrixDimensionsDialog

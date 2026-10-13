@@ -1,5 +1,6 @@
 import { useDroppable } from '@dnd-kit/core'
 import { useDocStore } from '../model/store'
+import { usePlotEditor } from '../model/plotEditor'
 import { PAGE_END_DROP_ID, type DropData } from '../dnd/dragData'
 import { DraggableBlock } from './BlockView'
 
@@ -13,6 +14,8 @@ export default function Page(): JSX.Element {
   const addListBlock = useDocStore((s) => s.addListBlock)
   const addProofBlock = useDocStore((s) => s.addProofBlock)
   const addCircuitBlock = useDocStore((s) => s.addCircuitBlock)
+  const addPlotBlock = useDocStore((s) => s.addPlotBlock)
+  const openPlotEditor = usePlotEditor((s) => s.open)
 
   const pageEndDropData: DropData = { origin: 'page' }
   const pageEnd = useDroppable({ id: PAGE_END_DROP_ID, data: pageEndDropData })
@@ -48,6 +51,16 @@ export default function Page(): JSX.Element {
         </button>
         <button type="button" className="btn" onClick={() => addCircuitBlock()}>
           + Circuit
+        </button>
+        <button
+          type="button"
+          className="btn"
+          onClick={() => {
+            const id = addPlotBlock()
+            if (id) openPlotEditor(id, true)
+          }}
+        >
+          + Plot
         </button>
       </div>
     </div>

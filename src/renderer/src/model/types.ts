@@ -142,12 +142,28 @@ export type Block =
   | { id: BlockId; type: 'proof'; startSlot: SlotId; steps: ProofStep[] }
   /** A logic-gate diagram, drawn on a grid and output as a TikZ picture. */
   | { id: BlockId; type: 'circuit'; gates: CircuitGate[]; wires: CircuitWire[]; align: Align }
+  /** A graph of y = f(x): the function built from widgets in `fnSlot`, drawn
+   * over the domain [xMin, xMax] and range [yMin, yMax]. `showLabel` adds
+   * "f(x) = …" above it. */
+  | {
+      id: BlockId
+      type: 'plot'
+      fnSlot: SlotId
+      xMin: number
+      xMax: number
+      yMin: number
+      yMax: number
+      showLabel: boolean
+      align: Align
+    }
 
 export type ListBlock = Extract<Block, { type: 'list' }>
 
 export type ProofBlock = Extract<Block, { type: 'proof' }>
 
 export type CircuitBlock = Extract<Block, { type: 'circuit' }>
+
+export type PlotBlock = Extract<Block, { type: 'plot' }>
 
 /** Blocks that carry an alignment — every type except lists and proofs. */
 export type AlignedBlock = Exclude<Block, ListBlock | ProofBlock>

@@ -21,6 +21,7 @@ import type {
   ToolId
 } from './types'
 import {
+  cloneSlot,
   collectSlotsOfNode,
   createMatrixNode,
   deleteNodeDeep,
@@ -39,6 +40,7 @@ import {
   type BlockPlacement
 } from './blockTree'
 import { defaultListStyle } from './lists'
+import { DEFAULT_WINDOW, type PlotWindow } from './plots'
 import { DEFAULT_PROOF_RELATION } from './proofs'
 import {
   PLACEHOLDER_DEFAULT_LABEL,
@@ -127,6 +129,18 @@ interface Store {
    * already drove that input. Refuses a gate wired to itself. */
   connectCircuit: (blockId: BlockId, from: string, to: string, input: number) => void
   removeCircuitWire: (blockId: BlockId, wireId: string) => void
+
+  // Plots
+  /** Adds a plot of an empty function over the default window and returns
+   * its id. Its function and window are filled in by the plot dialog. */
+  addPlotBlock: (placement?: BlockPlacement) => BlockId | null
+  /** Copies a plot's function into a scratch slot for the dialog to edit,
+   * so Cancel can leave the original untouched. Returns the copy's id. */
+  beginPlotEdit: (blockId: BlockId) => SlotId | null
+  /** Swaps the edited function in and applies the window. */
+  commitPlotEdit: (blockId: BlockId, editSlot: SlotId, window: PlotWindow, showLabel: boolean) => void
+  /** Throws away a scratch slot from beginPlotEdit. */
+  discardSlot: (slotId: SlotId) => void
 
   // Math nodes within a block
   dropToolIntoSlot: (toolId: ToolId, slotId: SlotId, index?: number) => void
@@ -427,6 +441,44 @@ export const useDocStore = create<Store>()(
       set((s) => {
         const circuit = s.doc.blocksById[blockId]
         if (circuit?.type === 'circuit') circuit.wires = circuit.wires.filter((w) => w.id !== wireId)
+      }),
+
+    // --- Plots ---------------------------------------------------------------
+
+    addPlotBlock: (placement) => {
+      const id = nanoid(8)
+      let placed = false
+      set((s) => {
+        const fnSlot = newSlot(s.doc)
+        const block: Block = { id, type: 'plot', fnSlot, ...DEFAULT_WINDOW, showLabel: true, align: 'center' }
+        placed = insertBlock(s.doc, block, placement)
+        if (!placed) delete s.doc.slots[fnSlot]
+      })
+      return placed ? id : null
+    },
+
+    beginPlotEdit: (blockId) => {
+      let copy: SlotId | null = null
+      set((s) => {
+        const block = s.doc.blocksById[blockId]
+        if (block?.type === 'plot') copy = cloneSlot(s.doc, block.fnSlot)
+      })
+      return copy
+    },
+
+    commitPlotEdit: (blockId, editSlot, window, showLabel) =>
+      set((s) => {
+        const block = s.doc.blocksById[blockId]
+        if (block?.type !== 'plot' || !s.doc.slots[editSlot]) return
+        deleteSlotDeep(s.doc, block.fnSlot)
+        block.fnSlot = editSlot
+        Object.assign(block, window)
+        block.showLabel = showLabel
+      }),
+
+    discardSlot: (slotId) =>
+      set((s) => {
+        deleteSlotDeep(s.doc, slotId)
       }),
 
     // --- Math nodes ----------------------------------------------------------

@@ -179,6 +179,7 @@ export function deleteBlockDeep(draft: DocState, blockId: BlockId): void {
   const block = draft.blocksById[blockId]
   if (!block) return
   if (block.type === 'math') deleteSlotDeep(draft, block.rootSlot)
+  if (block.type === 'plot') deleteSlotDeep(draft, block.fnSlot)
   if (block.type === 'list') {
     for (const item of block.items) for (const childId of item.blocks) deleteBlockDeep(draft, childId)
   }
@@ -216,6 +217,9 @@ export function cloneBlockDeep(draft: DocState, sourceId: BlockId): BlockId | nu
           blocks: item.blocks.map((childId) => cloneBlockDeep(draft, childId)).filter((c): c is BlockId => c !== null)
         }))
       }
+      break
+    case 'plot':
+      draft.blocksById[id] = { ...source, id, fnSlot: cloneSlot(draft, source.fnSlot) }
       break
     case 'proof':
       draft.blocksById[id] = {

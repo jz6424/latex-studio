@@ -27,6 +27,8 @@ function blockContent(block: Block, doc: DocState): JSX.Element {
       return <KatexView latex={block.source} display={block.display} />
     case 'math':
       return <KatexView latex={slotToLatex(doc, block.rootSlot)} display={block.display} />
+    case 'plot':
+      return <div className="block-drag-preview-text">Plot of f(x) = {slotToLatex(doc, block.fnSlot) || '…'}</div>
     case 'circuit':
       return (
         <div className="block-drag-preview-text">
