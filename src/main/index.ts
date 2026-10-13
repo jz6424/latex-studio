@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron'
 import { join } from 'path'
 import { existsSync } from 'fs'
-import { mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
+import { copyFile, mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
 import { execFile } from 'child_process'
 import { tmpdir } from 'os'
 
@@ -137,21 +137,79 @@ async function listProjects(): Promise<ProjectSummary[]> {
   return summaries
 }
 
+// --- Backups -----------------------------------------------------------------
+
+/**
+ * Timestamped copies of each project's file, in backups/<project id>/.
+ * Autosave overwrites a project with whatever is in the editor, so a bad
+ * in-memory document (a bug, an accidental mass delete) would otherwise
+ * replace the only copy. A copy is taken:
+ *   - every time a project is opened — the state you last left it in;
+ *   - before a save, if the newest copy is over BACKUP_INTERVAL_MS old, so
+ *     a long session has checkpoints too;
+ *   - before a project is deleted.
+ * Only the newest MAX_BACKUPS per project are kept.
+ */
+const BACKUPS_DIR = join(app.getPath('userData'), 'backups')
+const MAX_BACKUPS = 30
+const BACKUP_INTERVAL_MS = 10 * 60 * 1000
+
+/** When each project was last backed up this run, to skip the folder
+ * listing on every autosave. */
+const lastBackupAt = new Map<string, number>()
+
+async function backupProject(id: string): Promise<void> {
+  const source = projectFilePath(id)
+  if (!existsSync(source)) return
+  const dir = join(BACKUPS_DIR, id)
+  await mkdir(dir, { recursive: true })
+  // ISO time with the separators macOS/Windows dislike swapped out; it still
+  // sorts chronologically as text.
+  const stamp = new Date().toISOString().replace(/[:.]/g, '-')
+  await copyFile(source, join(dir, `${stamp}.json`))
+  lastBackupAt.set(id, Date.now())
+
+  const copies = (await readdir(dir)).filter((f) => f.endsWith('.json')).sort()
+  for (const old of copies.slice(0, Math.max(0, copies.length - MAX_BACKUPS))) {
+    await unlink(join(dir, old)).catch(() => {})
+  }
+}
+
+async function backupIfStale(id: string): Promise<void> {
+  const last = lastBackupAt.get(id)
+  if (last !== undefined && Date.now() - last < BACKUP_INTERVAL_MS) return
+  await backupProject(id)
+}
+
+/** A failed backup must never stop the save, open or delete it guards. */
+async function tryBackup(run: () => Promise<void>): Promise<void> {
+  try {
+    await run()
+  } catch (e) {
+    console.error('Project backup failed:', e)
+  }
+}
+
 async function saveProject(id: string, title: string, doc: unknown): Promise<void> {
   await mkdir(PROJECTS_DIR, { recursive: true })
+  await tryBackup(() => backupIfStale(id))
   const record: ProjectRecord = { id, title, updatedAt: Date.now(), doc }
   await writeFile(projectFilePath(id), JSON.stringify(record), 'utf-8')
 }
 
 async function loadProject(id: string): Promise<ProjectRecord | null> {
+  let record: ProjectRecord
   try {
-    return JSON.parse(await readFile(projectFilePath(id), 'utf-8')) as ProjectRecord
+    record = JSON.parse(await readFile(projectFilePath(id), 'utf-8')) as ProjectRecord
   } catch {
     return null
   }
+  await tryBackup(() => backupProject(id))
+  return record
 }
 
 async function deleteProject(id: string): Promise<void> {
+  await tryBackup(() => backupProject(id))
   await unlink(projectFilePath(id)).catch(() => {
     // Already gone is fine.
   })
