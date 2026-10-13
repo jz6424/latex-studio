@@ -5,6 +5,12 @@ import { mkdir, readdir, readFile, unlink, writeFile } from 'fs/promises'
 import { execFile } from 'child_process'
 import { tmpdir } from 'os'
 
+// Electron names the data folder after the app: "latex-widget-editor" (the
+// package name) under `npm run dev`, but "LaTeX Studio" (the productName)
+// once packaged. Pinning it means both see the same saved projects. Must run
+// before anything below reads userData.
+app.setPath('userData', join(app.getPath('appData'), 'latex-widget-editor'))
+
 interface CompileResult {
   success: boolean
   /** Base64 so the PDF can cross the IPC boundary as JSON. */
