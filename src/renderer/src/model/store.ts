@@ -154,6 +154,14 @@ interface Store {
   createTextNodeInSlot: (slotId: SlotId, initialValue: string, index?: number) => NodeId
 }
 
+// In `npm run dev`, a hot update that re-runs this module would build a new,
+// empty store while App kept its open project id — and autosave would then
+// write the empty document over that project's file (this wiped a real
+// project once). Accepting the update here stops it reaching App, and the
+// full reload sends the window back to the home screen with nothing open.
+// Packaged builds have no hot updates, so this is dev-only.
+if (import.meta.hot) import.meta.hot.accept(() => window.location.reload())
+
 export const useDocStore = create<Store>()(
   immer((set) => ({
     doc: makeInitialDoc(),
